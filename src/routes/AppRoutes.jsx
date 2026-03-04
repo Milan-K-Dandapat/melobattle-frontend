@@ -5,6 +5,7 @@ import MainLayout from "../layout/MainLayout";
 import Dashboard from "../pages/dashboard/Dashboard";
 import Intro from "../pages/Intro";
 import ProtectedRoute from "./ProtectedRoute";
+import { PrivacyPolicy, Terms, RefundPolicy, Contact } from "../pages/LegalPages";
 
 // Wallet Pages
 import WithdrawalPage from "../pages/wallet/WithdrawalPage"; 
@@ -32,6 +33,12 @@ const AppRoutes = () => {
 
   const routes = useRoutes([
     { path: "/login", element: <Login /> },
+
+    // 🔥 PUBLIC LEGAL PAGES (Required for Payment Gateway Approval)
+    { path: "/privacy-policy", element: <PrivacyPolicy /> },
+    { path: "/terms", element: <Terms /> },
+    { path: "/refund-policy", element: <RefundPolicy /> },
+    { path: "/contact", element: <Contact /> },
     
     { 
       path: "/intro", 
