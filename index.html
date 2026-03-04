@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <link rel="manifest" href="/manifest.json" />
+    
+    <meta name="theme-color" content="#6d28d9" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Melo Battle" />
+    
+    <title>Melo Battle Arena</title>
+
+    <style>
+      /* Corrected Styles to enable scrolling */
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        min-height: 100%; /* Changed from height to min-height */
+        overflow-x: hidden; /* Prevents side-scrolling */
+        overflow-y: auto;   /* 🔥 Enables vertical scrolling */
+        background-color: #000000;
+        -webkit-overflow-scrolling: touch; /* Smoother scrolling on iOS */
+      }
+
+      #root {
+        width: 100%;
+        min-height: 100vh; /* Ensures the app takes at least the full screen */
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Hide scrollbar for a cleaner look if desired, while still allowing scroll */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
