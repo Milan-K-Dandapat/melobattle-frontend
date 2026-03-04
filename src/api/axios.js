@@ -7,7 +7,7 @@ import axios from "axios";
 const axiosInstance = axios.create({
   // 🔥 FIX: Ensure baseURL includes the version if your backend uses it (e.g., /api/v1)
   // Check your server.js; if routes are under /api/v1, update this string.
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1",
+  baseURL: import.meta.env.VITE_API_URL || "https://melobattle-backend1.onrender.com/api/v1",
   
   /**
    * 🔥 TIMEOUT UPGRADE

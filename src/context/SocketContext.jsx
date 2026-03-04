@@ -13,7 +13,7 @@ export const SocketProvider = ({ children }) => {
     // This prevents anonymous "zombie" connections that cause flickering
     if (!user?._id) return;
 
-    const newSocket = io("http://localhost:5000", {
+    const newSocket = io("https://melobattle-backend1.onrender.com", {
       withCredentials: true,
       query: { userId: user._id },
       // 🔥 PERSISTENCE OPTIMIZATION: Prevents multiple connection attempts
