@@ -134,24 +134,29 @@ const Dashboard = () => {
         toast.success("Tournament results finalized!");
       };
 
-      // 🔥 NEW: Arena Activation Sync - Handles Upcoming -> Live transitions
-      const handleBattleStarted = ({ title }) => {
-        fetchDashboardData();
-        toast.success(`BATTLE STARTING: ${title} 🚀`);
-      };
+      // 🔥 Arena Activation Sync - Handles Upcoming -> Live transitions
+const handleBattleStarted = () => {
+  fetchDashboardData();
+  toast.success("A battle just went LIVE 🚀");
+};
 
       socket.on("NEW_CONTEST_DEPLOYED", handleNewContest);
       socket.on("PLAYER_JOINED_UPDATE", handlePlayerUpdate);
       socket.on("CONTEST_FINALIZED", handleContestFinalized);
-      socket.on("battleStarted", handleBattleStarted); // Sync with Arena Watcher
+      socket.on("BATTLE_STARTED", handleBattleStarted);// Sync with Arena Watcher
 
-      return () => {
-        socket.off("NEW_CONTEST_DEPLOYED", handleNewContest);
-        socket.off("PLAYER_JOINED_UPDATE", handlePlayerUpdate);
-        socket.off("CONTEST_FINALIZED", handleContestFinalized);
-        socket.off("battleStarted", handleBattleStarted);
-        window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-      };
+      const interval = setInterval(() => {
+  fetchDashboardData();
+}, 30000); // refresh contests every 30 seconds
+
+return () => {
+  clearInterval(interval);
+  socket.off("NEW_CONTEST_DEPLOYED", handleNewContest);
+  socket.off("PLAYER_JOINED_UPDATE", handlePlayerUpdate);
+  socket.off("CONTEST_FINALIZED", handleContestFinalized);
+  socket.off("BATTLE_STARTED", handleBattleStarted);
+  window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+};
     }
   }, [user, fetchDashboardData, refreshUser]);
 
@@ -425,7 +430,7 @@ const Dashboard = () => {
                 {loadingContests ? (
                   <div className="col-span-1 md:col-span-2 text-center py-12 md:py-20 animate-pulse text-slate-400 font-bold uppercase text-[10px] md:text-xs tracking-widest">Gathering live battles...</div>
                 ) : filteredContests.length > 0 ? (
-                  filteredContests.map((c) => (
+                  filteredContests?.map((c) => (
                     <BattleCard
                       key={c._id} 
                       id={c._id} 
