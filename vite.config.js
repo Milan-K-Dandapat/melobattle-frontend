@@ -8,9 +8,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      // Included melologo.png in assets to ensure it is cached for offline use
+      includeAssets: ['melologo.png'], 
       manifest: {
-        name: 'Melo Battle Arena',
+        name: 'Melo Battle',
         short_name: 'MeloBattle',
         description: 'Real-time skill battles and rewards',
         theme_color: '#6d28d9',
@@ -19,15 +20,16 @@ export default defineConfig({
         background_color: '#000000',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'melologo.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'melologo.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'maskable'
           }
         ]
       }
