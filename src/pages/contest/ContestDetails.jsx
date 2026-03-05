@@ -267,16 +267,16 @@ if (responseData?.isJoined === true) {
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/20" />
                 <div className="absolute top-4 left-4">
-                  <span className="bg-indigo-600 text-white text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-lg">
-                    {contest?.category || 'Standard'} League
+                  <span className="bg-indigo-600 text-white text-xs font-medium px-3 py-1 rounded-md">
+                     {contest?.category || 'Standard'} League
                   </span>
                 </div>
               </div>
 
               <div className="px-6 pb-8 -mt-6 relative z-10 bg-white/95 rounded-t-[2.5rem] pt-6">
-                <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic leading-tight mb-6">
-                  {contest?.title || "Elite Tournament"}
-                </h2>
+               <h2 className="text-xl font-semibold text-slate-900 leading-snug mb-4">
+  {contest?.title || "Elite Tournament"}
+</h2>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-[2rem] flex flex-col items-center text-center">
