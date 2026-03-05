@@ -88,7 +88,7 @@ const Intro = () => {
     animate={{ opacity: 1 }}
     transition={{ duration: 1 }}
   >
-    <source src="/videos/intro.mp4" type="video/mp4" />
+    <source src="/videos/intro1.mp4" type="video/mp4" />
   </motion.video>
 )}
 
