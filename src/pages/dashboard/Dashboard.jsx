@@ -134,14 +134,22 @@ const Dashboard = () => {
         toast.success("Tournament results finalized!");
       };
 
+      // 🔥 NEW: Arena Activation Sync - Handles Upcoming -> Live transitions
+      const handleBattleStarted = ({ title }) => {
+        fetchDashboardData();
+        toast.success(`BATTLE STARTING: ${title} 🚀`);
+      };
+
       socket.on("NEW_CONTEST_DEPLOYED", handleNewContest);
       socket.on("PLAYER_JOINED_UPDATE", handlePlayerUpdate);
       socket.on("CONTEST_FINALIZED", handleContestFinalized);
+      socket.on("battleStarted", handleBattleStarted); // Sync with Arena Watcher
 
       return () => {
         socket.off("NEW_CONTEST_DEPLOYED", handleNewContest);
         socket.off("PLAYER_JOINED_UPDATE", handlePlayerUpdate);
         socket.off("CONTEST_FINALIZED", handleContestFinalized);
+        socket.off("battleStarted", handleBattleStarted);
         window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       };
     }
@@ -170,6 +178,8 @@ const Dashboard = () => {
       if (isNaN(startTs)) return false; 
 
       const endTime = startTs + ((c.duration || 15) * 60 * 1000);
+      
+      // Filter out battles that ended more than 3 hours ago
       if (now > endTime + THREE_HOURS) return false;
 
       // 🔥 GENERAL SEARCH FILTER: Title or Battle Code
@@ -190,7 +200,7 @@ const Dashboard = () => {
 
       // TAB FILTER
       if (activeTab !== "All") {
-        const dbCategory = c.category ? String(c.category).toLowerCase().trim() : "";
+        const dbCategory = c.category ? String(c.category).toLowerCase().trim() : "global";
         const selectedTab = activeTab.toLowerCase().trim();
         if (dbCategory !== selectedTab) return false;
       }

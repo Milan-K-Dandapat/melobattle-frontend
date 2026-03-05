@@ -166,6 +166,7 @@ const BattleDeploymentCard = ({ battle, navigate, activeTab }) => {
           <button 
             onClick={(e) => {
               e.stopPropagation(); 
+              // 🔥 ALWAYS go to details or leaderboard
               if (isFinished) {
                 navigate(`/contest-leaderboard/${battle._id}`);
               } else {
