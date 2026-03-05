@@ -134,12 +134,16 @@ const BattleDeploymentCard = ({ battle, navigate, activeTab }) => {
           <span className="text-[9px] font-black text-purple-600 uppercase tracking-[0.3em] bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100">
              {battle.category || "General"} Battle
           </span>
-          <h3 className={`text-3xl font-black leading-[0.8] uppercase tracking-tighter transition-colors italic ${isFinished ? 'text-slate-400' : 'text-slate-900 group-hover:text-purple-600'}`}>
-            {battle.title}
-          </h3>
+          <h3 className={`text-lg font-semibold leading-snug transition-colors ${
+  isFinished ? 'text-slate-400' : 'text-slate-900 group-hover:text-purple-600'
+}`}>
+  {battle.title
+  ?.toLowerCase()
+  .replace(/\b\w/g, l => l.toUpperCase())}
+</h3>
         </div>
         <div className="text-right">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Victory Pot</p>
+            <p className="text-xs font-medium text-slate-500 mb-1">Victory Pot</p>
             <p className={`text-2xl font-black italic leading-none ${isFinished ? 'text-slate-300' : 'text-emerald-600'}`}>₹{battle.prizePool}</p>
         </div>
       </div>
