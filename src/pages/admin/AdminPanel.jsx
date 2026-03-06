@@ -397,7 +397,9 @@ const AdminPanel = () => {
   const downloadContestCSV = async (contestId, contestTitle, battleCode) => {
     try {
       const loadingToast = toast.loading("Compiling Matrix Data...");
-      const response = await axiosInstance.get(`/contest/${contestId}/export`);
+      const response = await axiosInstance.get(`/contest/${contestId}/export`, {
+  headers: { Accept: "application/json" }
+});
       toast.dismiss(loadingToast);
 
       const res = response?.data || response;
