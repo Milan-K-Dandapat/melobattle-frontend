@@ -15,7 +15,7 @@ const BattleScreen = () => {
   // Arena State Matrix
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(10); // Question Timer
+  const [timeLeft, setTimeLeft] = useState(0); // Question Timer
   const [totalTimeLeft, setTotalTimeLeft] = useState(0); // 🔥 Admin Total Timer
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -57,6 +57,7 @@ const BattleScreen = () => {
         if (result?.questions && result.questions.length > 0) {
           setQuestions(result.questions);
           
+          setTimeLeft(result.questions[0]?.time || 10);
           // 🔥 SYNC: Convert Admin Minutes from the contest document to Total Seconds
           const adminDuration = result.duration || 15; 
           setTotalTimeLeft(adminDuration * 60); 
@@ -140,9 +141,10 @@ const BattleScreen = () => {
 
     setTimeout(() => {
       if (currentIndex < questions.length - 1) {
-        setCurrentIndex((prev) => prev + 1);
-        setTimeLeft(10);
-        setSelectedOption(null);
+        const nextIndex = currentIndex + 1;
+setCurrentIndex(nextIndex);
+setTimeLeft(questions[nextIndex]?.time || 10);
+setSelectedOption(null);
       } else {
         finalizeArenaSession();
       }
@@ -251,7 +253,10 @@ const BattleScreen = () => {
             <motion.circle 
               cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" 
               strokeDasharray="364.4"
-              animate={{ strokeDashoffset: 364.4 - (364.4 * timeLeft) / 10 }}
+              animate={{
+  strokeDashoffset:
+    364.4 - (364.4 * timeLeft) / (currentQ?.time || 10)
+}}
               className={timeLeft < 3 ? 'text-red-500' : 'text-purple-500'}
               transition={{ ease: "linear" }}
             />
