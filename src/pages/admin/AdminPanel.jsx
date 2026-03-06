@@ -401,34 +401,28 @@ const AdminPanel = () => {
     } catch (err) { toast.error("Reset Failed"); } finally { setLoading(false); }
   };
 
- const downloadContestCSV = async (contestId, contestTitle, battleCode) => {
+ const downloadContestCSV = async (contestId, title) => {
   try {
-    const loadingToast = toast.loading("Compiling Matrix Data...");
+    const response = await axiosInstance.get(
+      `/contest/${contestId}/export`,
+      { responseType: "blob" }
+    );
 
-    const response = await axiosInstance.get(`/api/v1/contest/${contestId}/export`, {
-      responseType: "blob"
-    });
+    // ⚠ response is already the data because interceptor returns response.data
+    const blob = new Blob([response], { type: "text/csv;charset=utf-8;" });
 
-    toast.dismiss(loadingToast);
-
-    const blob = new Blob([response.data], { type: "text/csv" });
+    const link = document.createElement("a");
     const url = window.URL.createObjectURL(blob);
 
-    const a = document.createElement("a");
-    a.href = url;
+    link.href = url;
+    link.setAttribute("download", `Arena_Results_${title}.csv`);
 
-    const safeTitle = contestTitle.replace(/[^a-zA-Z0-9]/g, "_");
-    const safeCode = (battleCode || "NO_CODE").replace(/[^a-zA-Z0-9]/g, "_");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
 
-    a.download = `Arena_Results_${safeCode}_${safeTitle}.csv`;
-
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-
-    toast.success("CSV Downloaded");
-  } catch (err) {
-    toast.error("CSV Download Failed");
+  } catch (error) {
+    console.error("CSV Download Failed:", error);
   }
 };
 
