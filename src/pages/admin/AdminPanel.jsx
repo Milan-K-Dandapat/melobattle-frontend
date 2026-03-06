@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { io } from "socket.io-client";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Shield, Trophy, Users, Zap, Plus, RefreshCw, 
@@ -12,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../api/axios";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
+
 
 // 🔥 MASSIVE CATEGORY DICTIONARY (FAIL-SAFE DEFAULTS)
 const CATEGORY_MAP = {
@@ -44,6 +46,7 @@ const AdminPanel = () => {
   const jsonInputRef = useRef(null);
   const editJsonInputRef = useRef(null);
   const mediaInputRef = useRef(null); 
+  const socketRef = useRef(null);
 
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("contests");
@@ -197,6 +200,55 @@ const AdminPanel = () => {
   useEffect(() => {
     refreshAdminData();
   }, [refreshAdminData]);
+
+  useEffect(() => {
+
+  socketRef.current = io("https://melobattle-backend1.onrender.com", {
+  transports: ["websocket"],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 2000
+});
+
+  const socket = socketRef.current;
+
+  // 🔥 Player joined event
+  socket.on("PLAYER_JOINED_UPDATE", (data) => {
+    setBattles(prev =>
+      prev.map(b =>
+        b._id === data.contestId
+          ? { ...b, joinedCount: data.joinedCount }
+          : b
+      )
+    );
+  });
+
+  // 🔥 Contest status update
+  socket.on("CONTEST_UPDATED", (data) => {
+    setBattles(prev =>
+      prev.map(b =>
+        b._id === data.contestId
+          ? {
+              ...b,
+              joinedCount: data.joinedCount,
+              status: data.status,
+              prizePool: data.prizePool
+            }
+          : b
+      )
+    );
+  });
+
+  // 🔥 Leaderboard update
+  socket.on("LIVE_LEADERBOARD_UPDATE", (data) => {
+    console.log("Live Score Update:", data);
+  });
+
+  return () => {
+    socket.disconnect();
+  };
+
+}, []);
 
   const handleAddNewCategory = async () => {
     if (!newCategory) return toast.error("Main Domain Name is Required");
