@@ -405,7 +405,7 @@ const AdminPanel = () => {
   try {
     const loadingToast = toast.loading("Compiling Matrix Data...");
 
-    const response = await axiosInstance.get(`/contest/${contestId}/export`, {
+    const response = await axiosInstance.get(`/api/v1/contest/${contestId}/export`, {
       responseType: "blob"
     });
 
