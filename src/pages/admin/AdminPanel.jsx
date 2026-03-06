@@ -138,7 +138,14 @@ const AdminPanel = () => {
   const refreshAdminData = useCallback(async () => {
     try {
       setLoading(true);
-      const safeGet = (url) => axiosInstance.get(url).catch(err => err.response || err);
+      const safeGet = async (url) => {
+  try {
+    return await axiosInstance.get(url);
+  } catch (err) {
+    console.error("Admin fetch error:", url, err);
+    return null;
+  }
+};
 
       const [statsResponse, battleResponse, categoryResponse] = await Promise.all([
         safeGet("/admin/dashboard"),
@@ -394,46 +401,36 @@ const AdminPanel = () => {
     } catch (err) { toast.error("Reset Failed"); } finally { setLoading(false); }
   };
 
-  const downloadContestCSV = async (contestId, contestTitle, battleCode) => {
-    try {
-      const loadingToast = toast.loading("Compiling Matrix Data...");
-      const response = await axiosInstance.get(`/contest/${contestId}/export`, {
-  headers: { Accept: "application/json" }
-});
-      toast.dismiss(loadingToast);
+ const downloadContestCSV = async (contestId, contestTitle, battleCode) => {
+  try {
+    const loadingToast = toast.loading("Compiling Matrix Data...");
 
-      const res = response?.data || response;
-      const participants = res?.data || [];
-      
-      if (participants.length === 0) return toast.error("No warriors found in this arena.");
+    const response = await axiosInstance.get(`/contest/${contestId}/export`, {
+      responseType: "blob"
+    });
 
-      const headers = ["Rank", "Participant ID", "Warrior Name", "Username", "Score", "Accuracy (%)", "Time Taken (s)", "Prize Won (₹)"];
-      const csvRows = [headers.join(",")];
+    toast.dismiss(loadingToast);
 
-      participants.forEach(p => {
-        const participantId = p.userId?._id || p.userId || "Unknown"; 
-        const name = p.userId?.name || "Unknown";
-        const username = p.userId?.username || "Unknown";
-        
-        const row = [p.rank || "N/A", `"${participantId}"`, `"${name}"`, `"${username}"`, p.score || 0, p.accuracy || 0, p.completionTime || 0, p.prizeWon || 0];
-        csvRows.push(row.join(","));
-      });
+    const blob = new Blob([response.data], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
 
-      const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.setAttribute("href", url);
-      const safeTitle = contestTitle.replace(/[^a-zA-Z0-9]/g, '_');
-      const safeCode = (battleCode || 'NO_CODE').replace(/[^a-zA-Z0-9]/g, '_');
-      a.setAttribute("download", `Arena_Results_${safeCode}_${safeTitle}.csv`);
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      toast.success("Data Extraction Complete");
-    } catch (err) {
-      toast.error("Data Extraction Failed.");
-    }
-  };
+    const a = document.createElement("a");
+    a.href = url;
+
+    const safeTitle = contestTitle.replace(/[^a-zA-Z0-9]/g, "_");
+    const safeCode = (battleCode || "NO_CODE").replace(/[^a-zA-Z0-9]/g, "_");
+
+    a.download = `Arena_Results_${safeCode}_${safeTitle}.csv`;
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    toast.success("CSV Downloaded");
+  } catch (err) {
+    toast.error("CSV Download Failed");
+  }
+};
 
   const handleCloneBattle = (battle) => {
     setContestData({
@@ -709,7 +706,9 @@ const AdminPanel = () => {
 
                     <div className="grid gap-4">
                       {displayedBattles.map((b) => {
-                        const progress = Math.min(((b.joinedCount || 0) / (b.maxParticipants || 1)) * 100, 100);
+                       const joined = b.joinedCount || b.participants || 0;
+
+const progress = Math.min((joined / (b.maxParticipants || 1)) * 100, 100);
                         return (
                           <motion.div key={b._id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="p-8 bg-white/5 border border-white/10 rounded-[2.8rem] flex justify-between items-center group transition-all relative overflow-hidden">
                             {b.bannerImage && (
@@ -732,30 +731,79 @@ const AdminPanel = () => {
                               <div className="max-w-[280px] space-y-2">
                                 <div className="flex justify-between text-[8px] font-black text-slate-500 uppercase">
                                   <span>Pool: ₹{b.prizePool}</span>
-                                  <span>{b.joinedCount}/{b.maxParticipants} Joined</span>
+                                  <span>{joined}/{b.maxParticipants} Joined</span>
                                 </div>
                                 <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
                                   <div className={`h-full rounded-full ${signalFilter === "active" ? "bg-purple-600" : "bg-emerald-600"}`} style={{ width: `${progress}%` }} />
                                 </div>
                               </div>
                             </div>
-                            <div className="flex gap-3 ml-6 relative z-10 flex-wrap justify-end max-w-[120px]">
-                              {signalFilter === "closed" ? (
-                                <>
-                                  <button onClick={() => downloadContestCSV(b._id, b.title, b.battleCode)} className="p-4 bg-emerald-500/10 text-emerald-400 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all active:scale-90 shadow-xl" title="Download Results CSV"><Download size={20} /></button>
-                                  <button onClick={() => handleCloneBattle(b)} className="p-4 bg-amber-500/10 text-amber-500 rounded-2xl hover:bg-amber-500 hover:text-white transition-all active:scale-90 shadow-xl" title="Clone Battle Protocol"><CopyPlus size={20} /></button>
-                                </>
-                              ) : (
-                                <>
-                                  {/* 🔥 NEW: FORCE CLOSE BUTTON FOR REAL-TIME PAYOUTS */}
-                                  <button onClick={() => handleForceClose(b._id)} className="p-4 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl hover:bg-red-600 hover:text-white transition-all active:scale-90 shadow-xl shadow-red-950/20" title="FORCE CLOSE & PAYOUT"><Lock size={20} /></button>
-                                  <button onClick={() => handleShareBattle(b._id, b.battleCode, b.title)} className="p-4 bg-cyan-500/10 text-cyan-500 rounded-2xl hover:bg-cyan-500 hover:text-white transition-all active:scale-90 shadow-xl" title="Copy Invite Link"><Share2 size={20} /></button>
-                                  <button onClick={() => handleCloneBattle(b)} className="p-4 bg-amber-500/10 text-amber-500 rounded-2xl hover:bg-amber-500 hover:text-white transition-all active:scale-90 shadow-xl" title="Clone Battle Protocol"><CopyPlus size={20} /></button>
-                                  <button onClick={() => handleEditInitiate(b)} className="p-4 bg-blue-500/10 text-blue-500 rounded-2xl hover:bg-blue-500 hover:text-white transition-all active:scale-90 shadow-xl" title="Edit Logic"><Edit3 size={20} /></button>
-                                </>
-                              )}
-                              <button onClick={() => deleteBattle(b._id)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all active:scale-90 shadow-xl" title="Purge Protocol"><Trash2 size={20} /></button>
-                            </div>
+                           <div className="flex gap-3 ml-6 relative z-10 flex-wrap justify-end max-w-[120px]">
+  {signalFilter === "closed" ? (
+    <>
+      <button
+        onClick={() => downloadContestCSV(b._id, b.title, b.battleCode)}
+        className="p-4 bg-emerald-500/10 text-emerald-400 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all active:scale-90 shadow-xl"
+        title="Download Results CSV"
+      >
+        <Download size={20} />
+      </button>
+
+      <button
+        onClick={() => handleCloneBattle(b)}
+        className="p-4 bg-amber-500/10 text-amber-500 rounded-2xl hover:bg-amber-500 hover:text-white transition-all active:scale-90 shadow-xl"
+        title="Clone Battle Protocol"
+      >
+        <CopyPlus size={20} />
+      </button>
+    </>
+  ) : (
+    <>
+      {/* 🔥 FORCE CLOSE BUTTON ONLY IF LIVE */}
+      {b.status === "LIVE" && (
+        <button
+          onClick={() => handleForceClose(b._id)}
+          className="p-4 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl hover:bg-red-600 hover:text-white transition-all active:scale-90 shadow-xl shadow-red-950/20"
+          title="FORCE CLOSE & PAYOUT"
+        >
+          <Lock size={20} />
+        </button>
+      )}
+
+      <button
+        onClick={() => handleShareBattle(b._id, b.battleCode, b.title)}
+        className="p-4 bg-cyan-500/10 text-cyan-500 rounded-2xl hover:bg-cyan-500 hover:text-white transition-all active:scale-90 shadow-xl"
+        title="Copy Invite Link"
+      >
+        <Share2 size={20} />
+      </button>
+
+      <button
+        onClick={() => handleCloneBattle(b)}
+        className="p-4 bg-amber-500/10 text-amber-500 rounded-2xl hover:bg-amber-500 hover:text-white transition-all active:scale-90 shadow-xl"
+        title="Clone Battle Protocol"
+      >
+        <CopyPlus size={20} />
+      </button>
+
+      <button
+        onClick={() => handleEditInitiate(b)}
+        className="p-4 bg-blue-500/10 text-blue-500 rounded-2xl hover:bg-blue-500 hover:text-white transition-all active:scale-90 shadow-xl"
+        title="Edit Logic"
+      >
+        <Edit3 size={20} />
+      </button>
+    </>
+  )}
+
+  <button
+    onClick={() => deleteBattle(b._id)}
+    className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all active:scale-90 shadow-xl"
+    title="Purge Protocol"
+  >
+    <Trash2 size={20} />
+  </button>
+</div>
                           </motion.div>
                         );
                       })}
