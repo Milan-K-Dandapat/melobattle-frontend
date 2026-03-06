@@ -1,12 +1,19 @@
 import { io } from "socket.io-client";
 
-// This connects your frontend to your backend port
-const SOCKET_URL = "https://melobattle-backend1.onrender.com"; 
+const SOCKET_URL = "https://melobattle-backend1.onrender.com";
 
 const socket = io(SOCKET_URL, {
   autoConnect: true,
+  transports: ["websocket"],
+
+  // reconnect protection
   reconnection: true,
-  transports: ["websocket"]
+  reconnectionAttempts: 5,
+  reconnectionDelay: 2000,
+  timeout: 10000,
+
+  // prevents multiple connections
+  forceNew: false
 });
 
 export default socket;

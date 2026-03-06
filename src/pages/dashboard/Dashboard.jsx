@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, memo } from "react"; 
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell, Wallet, Trophy, Flame, Menu, LayoutDashboard, Gamepad2, User,
@@ -30,6 +30,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("All");
   const [contests, setContests] = useState([]);
   const [loadingContests, setLoadingContests] = useState(true);
+  const isFetching = useRef(false);
   const [isWalletOpen, setIsWalletOpen] = useState(false); 
   
   // 🔥 SEARCH STATES
@@ -47,7 +48,11 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   const fetchDashboardData = useCallback(async () => {
-    try {
+
+  if (isFetching.current) return;   // 🔒 stop duplicate requests
+  isFetching.current = true;
+
+  try {
       if (contests.length === 0) setLoadingContests(true); 
       
       const safeGet = (url) => axiosInstance.get(url).catch(err => err.response || err);
@@ -88,8 +93,9 @@ const Dashboard = () => {
     } catch (err) {
       console.error("Dashboard Sync Failed:", err);
     } finally {
-      setLoadingContests(false);
-    }
+  setLoadingContests(false);
+  isFetching.current = false; // 🔓 allow next request
+}
   }, [contests.length]);
 
   useEffect(() => {
@@ -111,53 +117,54 @@ const Dashboard = () => {
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-    if (socket) {
-      const handleNewContest = (newContest) => {
-        setContests((prev) => {
-          const exists = prev.find((c) => c._id === newContest._id);
-          if (exists) return prev;
-          return [newContest, ...prev];
-        });
-        toast.success(`NEW BATTLE: ${newContest.title}`);
-      };
+  let interval;
 
-      const handlePlayerUpdate = ({ contestId, joinedCount }) => {
-        setContests(prev => prev.map(c => 
-          c._id === contestId ? { ...c, joinedCount } : c
-        ));
-      };
+if (socket) {
 
-      // 🔥 NEW: Global Finalization Event - Syncs balance when backend closes a timer
-      const handleContestFinalized = () => {
-        if (refreshUser) refreshUser();
-        fetchDashboardData();
-        toast.success("Tournament results finalized!");
-      };
+  const handleNewContest = (newContest) => {
+    setContests((prev) => {
+      const exists = prev.find((c) => c._id === newContest._id);
+      if (exists) return prev;
+      return [newContest, ...prev];
+    });
+  };
 
-      // 🔥 Arena Activation Sync - Handles Upcoming -> Live transitions
-const handleBattleStarted = () => {
-  fetchDashboardData();
-  toast.success("A battle just went LIVE 🚀");
-};
+  const handlePlayerUpdate = ({ contestId, joinedCount }) => {
+    setContests(prev => prev.map(c =>
+      c._id === contestId ? { ...c, joinedCount } : c
+    ));
+  };
 
-      socket.on("NEW_CONTEST_DEPLOYED", handleNewContest);
-      socket.on("PLAYER_JOINED_UPDATE", handlePlayerUpdate);
-      socket.on("CONTEST_FINALIZED", handleContestFinalized);
-      socket.on("BATTLE_STARTED", handleBattleStarted);// Sync with Arena Watcher
+  const handleContestFinalized = () => {
+    if (refreshUser) refreshUser();
+    fetchDashboardData();
+  };
 
-      const interval = setInterval(() => {
-  fetchDashboardData();
-}, 30000); // refresh contests every 30 seconds
+  const handleBattleStarted = () => {
+    fetchDashboardData();
+  };
+
+  socket.off("NEW_CONTEST_DEPLOYED").on("NEW_CONTEST_DEPLOYED", handleNewContest);
+  socket.off("PLAYER_JOINED_UPDATE").on("PLAYER_JOINED_UPDATE", handlePlayerUpdate);
+  socket.off("CONTEST_FINALIZED").on("CONTEST_FINALIZED", handleContestFinalized);
+  socket.off("BATTLE_STARTED").on("BATTLE_STARTED", handleBattleStarted);
+}
+
+if (!interval) {
+  interval = setInterval(fetchDashboardData, 30000);
+}
 
 return () => {
+
   clearInterval(interval);
-  socket.off("NEW_CONTEST_DEPLOYED", handleNewContest);
-  socket.off("PLAYER_JOINED_UPDATE", handlePlayerUpdate);
-  socket.off("CONTEST_FINALIZED", handleContestFinalized);
-  socket.off("BATTLE_STARTED", handleBattleStarted);
+
+  socket.off("NEW_CONTEST_DEPLOYED");
+  socket.off("PLAYER_JOINED_UPDATE");
+  socket.off("CONTEST_FINALIZED");
+  socket.off("BATTLE_STARTED");
+
   window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 };
-    }
   }, [user, fetchDashboardData, refreshUser]);
 
   const handleInstallClick = async () => {
