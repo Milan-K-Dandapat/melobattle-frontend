@@ -99,9 +99,9 @@ const Dashboard = () => {
   }, [contests.length]);
 
   useEffect(() => {
-    if (user && contests.length === 0) {
-      fetchDashboardData();
-    }
+    if (user && contests.length === 0 && !isFetching.current) {
+  fetchDashboardData();
+}
 
     // 🔥 Sync balance on dashboard mount to reflect recent deposits
     if (user && refreshUser) {
@@ -130,17 +130,19 @@ if (socket) {
   };
 
   const handlePlayerUpdate = ({ contestId, joinedCount }) => {
-    setContests(prev => prev.map(c =>
-      c._id === contestId ? { ...c, joinedCount } : c
-    ));
+    setContests(prev =>
+      prev.map(c =>
+        c._id === contestId ? { ...c, joinedCount } : c
+      )
+    );
   };
 
   const handleContestFinalized = () => {
     if (refreshUser) refreshUser();
-    fetchDashboardData();
   };
 
   const handleBattleStarted = () => {
+    // optional refresh
     fetchDashboardData();
   };
 
@@ -150,21 +152,18 @@ if (socket) {
   socket.off("BATTLE_STARTED").on("BATTLE_STARTED", handleBattleStarted);
 }
 
-if (!interval) {
-  interval = setInterval(fetchDashboardData, 30000);
-}
-
 return () => {
 
-  clearInterval(interval);
-
-  socket.off("NEW_CONTEST_DEPLOYED");
-  socket.off("PLAYER_JOINED_UPDATE");
-  socket.off("CONTEST_FINALIZED");
-  socket.off("BATTLE_STARTED");
+  if (socket) {
+    socket.off("NEW_CONTEST_DEPLOYED");
+    socket.off("PLAYER_JOINED_UPDATE");
+    socket.off("CONTEST_FINALIZED");
+    socket.off("BATTLE_STARTED");
+  }
 
   window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 };
+
   }, [user, fetchDashboardData, refreshUser]);
 
   const handleInstallClick = async () => {

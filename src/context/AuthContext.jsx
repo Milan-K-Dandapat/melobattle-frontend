@@ -89,17 +89,37 @@ export const AuthProvider = ({ children }) => {
    * 🔥 REFRESH USER DATA
    * Specifically for updating balance after payments
    */
-  const refreshUser = useCallback(async () => {
-    try {
-      const response = await getProfile();
-      const userData = response?.data || response;
-      if (userData) {
-        updateGlobalUser(userData);
-      }
-    } catch (error) {
-      console.error("User refresh failed:", error);
+ const refreshUser = useCallback(async () => {
+
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  // 🔥 Prevent multiple refresh calls
+  if (fetchInProgress.current) return;
+
+  fetchInProgress.current = true;
+
+  try {
+
+    const response = await getProfile();
+
+    const userData = response?.data || response;
+
+    if (userData) {
+      updateGlobalUser(userData);
     }
-  }, [updateGlobalUser]);
+
+  } catch (error) {
+
+    console.error("User refresh failed:", error);
+
+  } finally {
+
+    fetchInProgress.current = false;
+
+  }
+
+}, [updateGlobalUser]);
 
   useEffect(() => {
     fetchUserProfile();

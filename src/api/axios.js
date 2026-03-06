@@ -4,19 +4,18 @@ import axios from "axios";
  * ARENA ELITE AXIOS CONFIGURATION
  * Optimized for: JWT Persistence, Large Base64 Payloads, and MongoDB Sync.
  */
+
+const pendingRequests = new Map(); // 🔥 prevents duplicate requests
+
 const axiosInstance = axios.create({
-  // 🔥 FIX: Ensure baseURL includes the version if your backend uses it (e.g., /api/v1)
-  // Check your server.js; if routes are under /api/v1, update this string.
   baseURL: import.meta.env.VITE_API_URL,
-  
+
   /**
    * 🔥 TIMEOUT UPGRADE
-   * Increased to 60s to accommodate large Base64 banner uploads from laptops.
-   * This prevents the "Arena Server unreachable" error.
    */
-  timeout: 60000, 
-  
-  withCredentials: true, // REQUIRED for cross-origin session cookies/tokens
+  timeout: 60000,
+
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -27,20 +26,34 @@ const axiosInstance = axios.create({
 ========================================= */
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Dynamically fetch the latest token from storage
+
     const token = localStorage.getItem("token");
-    
+
     if (token) {
-      // Must match your backend's auth.middleware 'protect' logic
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
+    // 🔥 Prevent duplicate simultaneous requests
+    const requestKey = `${config.method}_${config.url}`;
+
+    if (pendingRequests.has(requestKey)) {
+      pendingRequests.get(requestKey).abort();
+    }
+
+    const controller = new AbortController();
+    config.signal = controller.signal;
+
+    pendingRequests.set(requestKey, controller);
+
     // Log diagnostics for debugging URL sync
     if (import.meta.env.DEV) {
       const payloadSize = config.data ? JSON.stringify(config.data).length : 0;
-      console.log(`🚀 [Arena Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url} | Payload: ${(payloadSize / 1024).toFixed(2)} KB`);
+
+      console.log(
+        `🚀 [Arena Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url} | Payload: ${(payloadSize / 1024).toFixed(2)} KB`
+      );
     }
-    
+
     return config;
   },
   (error) => {
@@ -54,27 +67,42 @@ axiosInstance.interceptors.request.use(
 ========================================= */
 axiosInstance.interceptors.response.use(
   (response) => {
-    /** * 🔥 UNWRAP DATA
-     * By returning response.data here, your components receive 
-     * the JSON object { success, data, message } directly.
-     */
-    return response.data; 
+
+    // 🔥 Remove request from pending list
+    const requestKey = `${response.config.method}_${response.config.url}`;
+    pendingRequests.delete(requestKey);
+
+    return response.data;
+
   },
-  (error) => {
+  async (error) => {
+
     const { response, config } = error;
+
+    // 🔥 HANDLE 429: Rate Limit Protection
+    if (response?.status === 429) {
+
+      console.warn("⚠️ Too many requests. Slowing down client...");
+
+      // wait before allowing next request
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      return Promise.reject(error);
+    }
 
     // 🔥 HANDLE 401: Unauthorized/Session Expired
     if (response?.status === 401) {
+
       const isLoginPage = window.location.pathname === "/login";
 
-      // If we get a 401 and we aren't on login, the token is invalid
       if (!isLoginPage) {
+
         console.error("🔒 Session invalidated. Terminating credentials...");
+
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        
-        // Use replace to prevent users from navigating back into a broken session
-        window.location.replace("/login?expired=true"); 
+
+        window.location.replace("/login?expired=true");
       }
     }
 
@@ -85,7 +113,6 @@ axiosInstance.interceptors.response.use(
 
     // 🔥 HANDLE 404: Endpoint Typos
     if (response?.status === 404) {
-      // Logic enhanced to show the full failed URL for debugging 404 Sync Errors
       console.error(`❌ [404] Backend route missing: ${config?.baseURL}${config?.url}`);
     }
 
@@ -96,11 +123,13 @@ axiosInstance.interceptors.response.use(
 
     // 🔥 HANDLE NETWORK ERRORS / TIMEOUTS
     if (!response) {
-      if (error.code === 'ECONNABORTED') {
+
+      if (error.code === "ECONNABORTED") {
         console.error("🌐 [Timeout] Upload took too long. Optimize image size.");
       } else {
         console.error("🌐 [Network Error] Arena Server unreachable. Check backend console.");
       }
+
     }
 
     return Promise.reject(error);
