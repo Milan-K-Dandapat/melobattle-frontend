@@ -317,7 +317,9 @@ e.target.value = "";
   };
 
   const handleUpdateExecution = async () => {
-    if (!editingBattle.title || !editingBattle.startTime) return toast.error("Logic Parameters Incomplete");
+    if (!editingBattle.title) {
+  return toast.error("Logic Parameters Incomplete");
+} 
     if (editingBattle.questions.length === 0) return toast.error("ARENA ERROR: Contest must have questions");
     
     setLoading(true);
@@ -326,10 +328,18 @@ e.target.value = "";
       setBattles(prev => prev.map(b => b._id === editingBattle._id ? { ...editingBattle, prizePool: updatedPrize } : b));
       
       const payload = {
-        ...editingBattle,
-        prizePool: updatedPrize,
-        startTime: new Date(editingBattle.startTime).toISOString() 
-      };
+  ...editingBattle,
+  prizePool: updatedPrize
+};
+
+// only convert date if valid
+if (editingBattle.startTime) {
+  const start = new Date(editingBattle.startTime);
+
+  if (!isNaN(start.getTime())) {
+    payload.startTime = start.toISOString();
+  }
+}
 
       const response = await axiosInstance.put(`/contest/${editingBattle._id}`, payload);
       const res = response?.data || response;
