@@ -14,6 +14,8 @@ const QuizResult = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const savedResult = sessionStorage.getItem("lastBattleResult");
+const recoveredState = savedResult ? JSON.parse(savedResult) : null;
   
   // 🔥 EXTENDED SYNC: Destructure all stats sent from BattleScreen
   const { 
@@ -69,6 +71,16 @@ const QuizResult = () => {
   useEffect(() => {
     // 🎊 1. ELITE CELEBRATION PROTOCOL
     if (rank <= 3) {
+      // 🔥 Save result so refresh doesn't break the page
+useEffect(() => {
+  if (location.state) {
+    sessionStorage.setItem(
+      "lastBattleResult",
+      JSON.stringify(location.state)
+    );
+  }
+}, [location.state]);
+
       const duration = 4 * 1000;
       const end = Date.now() + duration;
       const frame = () => {
@@ -143,15 +155,16 @@ const QuizResult = () => {
     }
   };
 
-  if (!location.state) {
-    return (
-      <div className="min-h-[100dvh] bg-[#050810] flex flex-col items-center justify-center p-6 text-center">
-        <Loader2 className="animate-spin text-purple-600 mb-4 w-8 h-8 md:w-10 md:h-10" />
-        <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.4em] mb-6">Protocol Terminated</p>
-        <button onClick={() => navigate('/dashboard')} className="px-8 md:px-10 py-3 md:py-4 bg-purple-600 rounded-xl md:rounded-2xl font-black text-white text-[9px] md:text-[10px] uppercase tracking-widest shadow-xl shadow-purple-500/20 active:scale-95 transition-all">Back to Hub</button>
-      </div>
-    );
+ // 🔥 Recover result if page refreshes
+
+if (!location.state && !recoveredState) {
+  if (contestId) {
+    navigate(`/contest-leaderboard/${contestId}`);
+  } else {
+    navigate("/dashboard");
   }
+  return null;
+}
 
   return (
     <div className="min-h-[100dvh] bg-[#0A0C14] text-white font-sans selection:bg-purple-500/30 overflow-x-hidden relative flex flex-col items-center justify-center py-4 px-3 md:py-10 md:px-5">
