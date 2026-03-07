@@ -206,13 +206,21 @@ return () => {
 
     const filtered = contests.filter(c => {
       // Safely parse start time, ignoring badly formatted old test data
-      const startTs = new Date(c.startTime).getTime();
-      if (isNaN(startTs)) return false; 
+     let startTs = null;
+let endTime = null;
 
-      const endTime = startTs + ((c.duration || 15) * 60 * 1000);
+// 🔥 Instant battles never expire
+if (!c.isInstantBattle) {
+  startTs = new Date(c.startTime).getTime();
+
+  if (isNaN(startTs)) return false;
+
+  endTime = startTs + ((c.duration || 15) * 60 * 1000);
+
+  // remove battles ended long ago
+  if (now > endTime + THREE_HOURS) return false;
+}
       
-      // Filter out battles that ended more than 3 hours ago
-      if (now > endTime + THREE_HOURS) return false;
 
       // 🔥 GENERAL SEARCH FILTER: Title or Battle Code
       if (searchQuery) {
@@ -240,32 +248,26 @@ return () => {
       return true;
     });
 
-    return filtered.sort((a, b) => {
-      const aStart = new Date(a.startTime).getTime();
-      const bStart = new Date(b.startTime).getTime();
-      
-      // Fallback for bad dates
-      if (isNaN(aStart)) return 1;
-      if (isNaN(bStart)) return -1;
+   return filtered.sort((a, b) => {
 
-      const aEnd = aStart + ((a.duration || 15) * 60 * 1000);
-      const bEnd = bStart + ((b.duration || 15) * 60 * 1000);
+  // 🔥 Always open battles always appear first
+  if (a.isInstantBattle && !b.isInstantBattle) return -1;
+  if (!a.isInstantBattle && b.isInstantBattle) return 1;
 
-      const aIsClosed = now > aEnd;
-      const bIsClosed = now > bEnd;
+  const aStart = new Date(a.startTime).getTime();
+  const bStart = new Date(b.startTime).getTime();
 
-      if (aIsClosed && !bIsClosed) return 1;
-      if (!aIsClosed && bIsClosed) return -1;
+  const aEnd = aStart + ((a.duration || 15) * 60 * 1000);
+  const bEnd = bStart + ((b.duration || 15) * 60 * 1000);
 
-      const aIsLive = aStart <= now && !aIsClosed;
-      const bIsLive = bStart <= now && !bIsClosed;
+  const aIsClosed = Date.now() > aEnd;
+  const bIsClosed = Date.now() > bEnd;
 
-      if (aIsLive && !bIsLive) return -1;
-      if (!aIsLive && bIsLive) return 1;
+  if (aIsClosed && !bIsClosed) return 1;
+  if (!aIsClosed && bIsClosed) return -1;
 
-      if (b.prizePool !== a.prizePool) return (b.prizePool || 0) - (a.prizePool || 0);
-      return aStart - bStart;
-    });
+  return aStart - bStart;
+});
   }, [contests, activeTab, searchQuery, categorySearch]); 
 
   const handlePlayNow = () => {
@@ -762,11 +764,11 @@ if (isInstantBattle) {
                 {category || "Global"} {subCategory && subCategory !== "General" ? `› ${subCategory}` : ''}
               </span>
               
-              {!isClosed && (
-                <span className="text-[8px] md:text-[9px] font-black text-blue-700 uppercase tracking-widest bg-blue-50 backdrop-blur-md px-2 md:px-3 py-1 md:py-1.5 rounded-md md:rounded-lg border border-blue-100 shadow-sm inline-flex items-center gap-1">
-                  <Clock size={10} /> {duration || 15} MINS
-                </span>
-              )}
+              {!isClosed && !isInstantBattle && (
+  <span className="text-[8px] ...">
+    <Clock size={10} /> {duration || 15} MINS
+  </span>
+)}
             </div>
             <h3 className={`text-lg md:text-xl font-black mt-2 md:mt-3 leading-tight uppercase tracking-tighter drop-shadow-sm transition-colors pr-8 ${isCompletedByUser ? 'text-slate-600' : 'text-slate-900 group-hover:text-purple-600'}`}>
               {title}

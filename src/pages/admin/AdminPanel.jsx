@@ -517,7 +517,7 @@ if (!contestData.isInstantBattle && contestData.startTime) {
 };
 
   const handleCloneBattle = (battle) => {
-    setContestData({
+  setContestData({
   title: "",
   category: Object.keys(categoryData)[0] || "GK",
   subCategory: categoryData[Object.keys(categoryData)[0]]?.[0] || "Current Affairs",
@@ -534,7 +534,8 @@ if (!contestData.isInstantBattle && contestData.startTime) {
   questions: [],
   mediaFiles: [],
   useRandomQuestions: false,
-  randomQuestionCount: 10
+  randomQuestionCount: 10,
+  isInstantBattle: false
 });
 
 // 🔥 reset JSON input
@@ -909,7 +910,9 @@ if (jsonInputRef.current) {
                       {displayedBattles.map((b) => {
                        const joined = b.joinedCount || b.participants || 0;
 
-const progress = Math.min((joined / (b.maxParticipants || 1)) * 100, 100);
+const progress = b.isInstantBattle
+  ? 0
+  : Math.min((joined / (b.maxParticipants || 1)) * 100, 100);
                         return (
                           <motion.div key={b._id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="p-8 bg-white/5 border border-white/10 rounded-[2.8rem] flex justify-between items-center group transition-all relative overflow-hidden">
                             {b.bannerImage && (
