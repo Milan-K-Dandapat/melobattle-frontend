@@ -434,18 +434,24 @@ if (!contestData.useRandomQuestions && contestData.questions.length === 0) {
   };
 
   const deleteBattle = async (id) => {
-    if (!window.confirm("Authorize Protocol Purge?")) return;
+  if (!window.confirm("Authorize Protocol Purge?")) return;
+
+  try {
+    setLoading(true);
+
+    // 🔥 Optimistic UI remove
     setBattles(prev => prev.filter(b => b._id !== id));
-    try {
-      const response = await axiosInstance.delete(`/contest/${id}`);
-      const res = response?.data || response;
-      if (res?.success || response?.status === 200) toast.success("Signal Terminated");
-      refreshAdminData(); 
-    } catch (err) { 
-      toast.error("Purge Failed"); 
-      refreshAdminData(); 
-    }
-  };
+
+    await axiosInstance.delete(`/contest/${id}`);
+
+    toast.success("Signal Terminated");
+
+  } catch (err) {
+    toast.error("Purge Failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleReset = async (type) => {
     if (!window.confirm(`CRITICAL: Authorize ${type.toUpperCase()} flush?`)) return;
