@@ -379,12 +379,12 @@ const payload = {
   prizePool: Number(finalPrizePool) || 0
 };
 
-// 🔥 Only add maxParticipants if NOT always-open battle
+// add max participants only for scheduled battles
 if (!contestData.isInstantBattle) {
   payload.maxParticipants = Number(safeContestData.maxParticipants) || 2;
 }
 
-// 🔥 Only add startTime if NOT always-open battle
+// add start time only if provided
 if (!contestData.isInstantBattle && contestData.startTime) {
   payload.startTime = new Date(contestData.startTime).toISOString();
 }
