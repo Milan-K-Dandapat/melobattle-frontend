@@ -84,7 +84,8 @@ const AdminPanel = () => {
     questions: [],
     mediaFiles: [],
     useRandomQuestions: false,
-  randomQuestionCount: 10
+  randomQuestionCount: 10,
+   isInstantBattle: false
   });
 
   const handleJsonUpload = (e, mode = "create") => {
@@ -350,9 +351,13 @@ e.target.value = "";
   };
 
   const deployContest = async () => {
-    if (!contestData.title || !contestData.startTime || !contestData.category) {
-      return toast.error("DEPLOYMENT ERROR: Title, Category, and Time are Required");
-    }
+    if (!contestData.title || !contestData.category) {
+  return toast.error("DEPLOYMENT ERROR: Title and Category required");
+}
+
+if (!contestData.isInstantBattle && !contestData.startTime) {
+  return toast.error("Deployment time required for scheduled battle");
+}
 if (!contestData.useRandomQuestions && contestData.questions.length === 0) {
   return toast.error("UPLOAD REQUIRED: Add JSON Question Bank");
 }
@@ -751,10 +756,87 @@ if (jsonInputRef.current) {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-6">
-                        <AdminSelect label="Architecture" value={contestData.type} options={[{v: "MULTIPLAYER", l: "Multiplayer Arena"}, {v: "HEAD_TO_HEAD", l: "1 vs 1 Duel"}]} onChange={(v) => setContestData({...contestData, type: v})} />
-                        <AdminInput label="Arena Deployment Time" type="datetime-local" value={contestData.startTime} onChange={(v) => setContestData({...contestData, startTime: v})} />
-                      </div>
+                     <div className="grid grid-cols-2 gap-6">
+
+  <AdminSelect
+    label="Architecture"
+    value={contestData.type}
+    options={[
+      { v: "MULTIPLAYER", l: "Multiplayer Arena" },
+      { v: "HEAD_TO_HEAD", l: "1 vs 1 Duel" }
+    ]}
+    onChange={(v) => setContestData({ ...contestData, type: v })}
+  />
+
+  {/* 🔥 Always Open Toggle */}
+  <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4">
+    <div>
+      <p className="text-xs font-black uppercase tracking-widest text-indigo-400">
+        Always Open Battle
+      </p>
+      <p className="text-[9px] text-slate-500 uppercase">
+        Players can join anytime
+      </p>
+    </div>
+
+    <input
+      type="checkbox"
+      checked={contestData.isInstantBattle}
+      onChange={(e) =>
+        setContestData({
+          ...contestData,
+          isInstantBattle: e.target.checked,
+          startTime: e.target.checked ? "" : contestData.startTime
+        })
+      }
+      className="w-6 h-6 accent-indigo-500"
+    />
+  </div>
+
+</div>
+
+{/* 🔥 Show Deployment Time ONLY if not instant */}
+{!contestData.isInstantBattle && (
+  <div className="mt-6">
+    <AdminInput
+      label="Arena Deployment Time"
+      type="datetime-local"
+      value={contestData.startTime}
+      onChange={(v) =>
+        setContestData({ ...contestData, startTime: v })
+      }
+    />
+  </div>
+)}
+
+                      {/* 🔥 ALWAYS OPEN BATTLE */}
+
+<div className="p-6 bg-indigo-600/10 border border-indigo-500/20 rounded-[2rem] flex items-center justify-between shadow-inner group mt-4">
+  <div className="flex items-center gap-3">
+    <Globe className="text-indigo-500" size={20} />
+    <div className="flex flex-col">
+      <span className="text-xs font-black uppercase tracking-widest text-slate-300">
+        Always Open Battle
+      </span>
+      <span className="text-[8px] font-bold text-slate-500 uppercase italic">
+        Players can join anytime
+      </span>
+    </div>
+  </div>
+
+  <input
+    type="checkbox"
+    checked={contestData.isInstantBattle}
+    onChange={(e) =>
+      setContestData({
+        ...contestData,
+        isInstantBattle: e.target.checked,
+        startTime: e.target.checked ? "" : contestData.startTime
+      })
+    }
+    className="w-6 h-6 accent-indigo-500"
+  />
+</div>
 
                       <div className="grid grid-cols-4 gap-4">
                         <AdminInput label="Entry (₹)" type="number" value={contestData.entryFee} onChange={(v) => setContestData({...contestData, entryFee: Number(v)})} />

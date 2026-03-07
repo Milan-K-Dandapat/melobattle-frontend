@@ -54,15 +54,24 @@ const BattleScreen = () => {
           return;
         }
 
-        if (result?.questions && result.questions.length > 0) {
-          setQuestions(result.questions);
-          
-          setTimeLeft(result.questions[0]?.time || 10);
-          // 🔥 SYNC: Convert Admin Minutes from the contest document to Total Seconds
-          const adminDuration = result.duration || 15; 
-          setTotalTimeLeft(adminDuration * 60); 
-          
-          toast.success("ARENA SYNCED", { icon: '🛡️' });
+if (result?.questions && result.questions.length > 0) {
+
+  setQuestions(result.questions);
+
+  setTimeLeft(result.questions[0]?.time || 10);
+
+  // 🔥 ADMIN TOTAL TIMER
+  const adminDuration = result.duration || 15;
+  setTotalTimeLeft(adminDuration * 60);
+
+  // 🔥 INSTANT BATTLE SUPPORT
+  if (result?.isInstantBattle) {
+    toast.success("INSTANT BATTLE STARTED", { icon: '⚡' });
+  } else {
+    toast.success("ARENA SYNCED", { icon: '🛡️' });
+  }
+
+
         } else {
           throw new Error("Question matrix empty. Check manual JSON upload.");
         }
