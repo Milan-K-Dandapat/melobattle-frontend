@@ -82,7 +82,9 @@ const AdminPanel = () => {
     duration: 15,
     bannerImage: "",
     questions: [],
-    mediaFiles: [] 
+    mediaFiles: [],
+    useRandomQuestions: false,
+  randomQuestionCount: 10
   });
 
   const handleJsonUpload = (e, mode = "create") => {
@@ -348,9 +350,9 @@ const AdminPanel = () => {
     if (!contestData.title || !contestData.startTime || !contestData.category) {
       return toast.error("DEPLOYMENT ERROR: Title, Category, and Time are Required");
     }
-    if (contestData.questions.length === 0) {
-      return toast.error("UPLOAD REQUIRED: Add JSON Question Bank");
-    }
+if (!contestData.useRandomQuestions && contestData.questions.length === 0) {
+  return toast.error("UPLOAD REQUIRED: Add JSON Question Bank");
+}
     
     setLoading(true);
     try {
@@ -358,6 +360,8 @@ const AdminPanel = () => {
       
       const payload = { 
         ...safeContestData, 
+        useRandomQuestions: contestData.useRandomQuestions,
+        randomQuestionCount: contestData.randomQuestionCount,
         entryFee: Number(safeContestData.entryFee) || 0,
         maxParticipants: Number(safeContestData.maxParticipants) || 2,
         duration: Number(safeContestData.duration) || 15,
@@ -628,7 +632,45 @@ const AdminPanel = () => {
                         </div>
 
                         <div className="space-y-4">
-                          <label className="text-[10px] font-black text-slate-500 uppercase ml-6 tracking-widest block italic">Question Bank (.JSON)</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase ml-6 tracking-widest block italic">Question Bank (.JSON)</label>{/* 🔥 RANDOM QUESTION BANK OPTION */}
+
+<div className="flex items-center justify-between bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4 mt-4">
+  <div>
+    <p className="text-xs font-black uppercase tracking-widest text-purple-400">
+      Use Random Question Bank
+    </p>
+    <p className="text-[9px] text-slate-500 uppercase">
+      Select random questions from 1000 question bank
+    </p>
+  </div>
+
+  <input
+    type="checkbox"
+    checked={contestData.useRandomQuestions}
+    onChange={(e) =>
+      setContestData({
+        ...contestData,
+        useRandomQuestions: e.target.checked
+      })
+    }
+    className="w-6 h-6 accent-purple-500"
+  />
+</div>
+{/* 🔥 RANDOM QUESTION COUNT INPUT */}
+
+{contestData.useRandomQuestions && (
+  <AdminInput
+    label="Random Questions Count"
+    type="number"
+    value={contestData.randomQuestionCount}
+    onChange={(v) =>
+      setContestData({
+        ...contestData,
+        randomQuestionCount: Number(v)
+      })
+    }
+  />
+)}
                           <div 
                             onClick={() => jsonInputRef.current.click()}
                             className={`group relative w-full h-32 border-2 border-dashed rounded-[2.5rem] bg-black/40 flex flex-col items-center justify-center cursor-pointer transition-all shadow-inner ${contestData.questions.length > 0 ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-white/10 hover:border-blue-500/50'}`}
