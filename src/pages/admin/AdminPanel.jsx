@@ -564,6 +564,23 @@ if (jsonInputRef.current) {
   };
 
   const nowTime = Date.now();
+
+  const activeBattles = battles.filter(b => {
+
+  // 🔥 Instant battles are always active
+  if (b.isInstantBattle) return true;
+
+  if (!b.startTime) return false;
+
+  const startTs = new Date(b.startTime).getTime();
+
+  if (isNaN(startTs)) return false;
+
+  const endTime = startTs + (b.duration || 15) * 60000;
+
+  return nowTime <= endTime;
+
+});
   
  const closedBattles = battles.filter(b => {
 
