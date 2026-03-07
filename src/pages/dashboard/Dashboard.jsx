@@ -826,7 +826,15 @@ if (isInstantBattle) {
               ? "bg-red-600 text-white animate-pulse shadow-red-200"
               : "bg-purple-600 text-white hover:bg-purple-700 shadow-purple-200"
       }`}>
-        {isCompletedByUser || isClosed ? <>View Standings <BarChart3 className="w-3.5 h-3.5 md:w-4 md:h-4"/></> : isJoined ? "Continue to Arena" : isUrgent ? <>JOIN LIVE NOW <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4"/></> : "Enter Arena"}
+        {isCompletedByUser || isClosed
+  ? <>View Standings <BarChart3 className="w-3.5 h-3.5 md:w-4 md:h-4"/></>
+  : isJoined 
+    ? "Continue to Arena"
+    : isInstantBattle
+      ? <>JOIN LIVE NOW <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4"/></>
+      : isUrgent
+        ? <>JOIN LIVE NOW <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4"/></>
+        : "Enter Arena"}
       </button>
     </motion.div>
   );
