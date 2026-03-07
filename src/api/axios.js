@@ -79,6 +79,11 @@ async (error) => {
 
   const { response, config } = error;
 
+  // 🔥 IGNORE cancelled requests completely
+  if (error.code === "ERR_CANCELED" || error.name === "CanceledError") {
+    return Promise.resolve(); 
+  }
+
   // 🔥 IGNORE CANCELLED REQUESTS (navigation or duplicate requests)
   if (error.code === "ERR_CANCELED" || error.name === "CanceledError") {
 

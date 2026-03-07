@@ -137,11 +137,12 @@ if (socket) {
     );
   };
 
- const handleContestFinalized = () => {
+const handleContestFinalized = () => {
 
   if (refreshUser) refreshUser();
 
-  // 🔥 refresh contest state so completed battles update instantly
+  // 🔥 force refresh contests so completed battle updates
+  setContests([]);
   fetchDashboardData();
 };
 
