@@ -89,7 +89,10 @@ const AdminPanel = () => {
 
   const handleJsonUpload = (e, mode = "create") => {
     const file = e.target.files[0];
-    if (!file) return;
+if (!file) return;
+
+// 🔥 allow uploading same JSON again without refresh
+e.target.value = "";
     if (file.type !== "application/json") return toast.error("INVALID FORMAT: Please upload a .json file");
 
     const reader = new FileReader();
@@ -484,22 +487,29 @@ if (!contestData.useRandomQuestions && contestData.questions.length === 0) {
 
   const handleCloneBattle = (battle) => {
     setContestData({
-      title: `${battle.title} (Clone)`,
-      category: battle.category || Object.keys(categoryData)[0] || "General",
-      subCategory: battle.subCategory || "General",
-      type: battle.type || "MULTIPLAYER",
-      entryFee: battle.entryFee || 0,
-      maxParticipants: battle.maxParticipants || 2,
-      commissionPercentage: battle.commissionPercentage || 20,
-      winnerPercentage: battle.winnerPercentage || 60,
-      isSponsored: battle.isSponsored || false,
-      sponsorPrize: battle.sponsorPrize || 0,
-      startTime: "", 
-      duration: battle.duration || 15,
-      bannerImage: battle.bannerImage || "",
-      questions: battle.questions || [],
-      mediaFiles: []
-    });
+  title: "",
+  category: Object.keys(categoryData)[0] || "GK",
+  subCategory: categoryData[Object.keys(categoryData)[0]]?.[0] || "Current Affairs",
+  type: "MULTIPLAYER",
+  entryFee: 0,
+  maxParticipants: 2,
+  commissionPercentage: 20,
+  winnerPercentage: 60,
+  isSponsored: false,
+  sponsorPrize: 0,
+  startTime: "",
+  duration: 15,
+  bannerImage: "",
+  questions: [],
+  mediaFiles: [],
+  useRandomQuestions: false,
+  randomQuestionCount: 10
+});
+
+// 🔥 reset JSON input
+if (jsonInputRef.current) {
+  jsonInputRef.current.value = "";
+}
     setActiveTab("contests");
     window.scrollTo({ top: 0, behavior: "smooth" });
     toast.success("Protocol Cloned! Set new deployment time.", { icon: '🧬', style: { background: '#050810', color: '#fff', border: '1px solid #f59e0b' } });
