@@ -367,17 +367,23 @@ if (!contestData.useRandomQuestions && contestData.questions.length === 0) {
       const { mediaFiles, ...safeContestData } = contestData;
       
       const payload = { 
-        ...safeContestData, 
-        useRandomQuestions: contestData.useRandomQuestions,
-        randomQuestionCount: contestData.randomQuestionCount,
-        entryFee: Number(safeContestData.entryFee) || 0,
-        maxParticipants: Number(safeContestData.maxParticipants) || 2,
-        duration: Number(safeContestData.duration) || 15,
-        commissionPercentage: Number(safeContestData.commissionPercentage) || 0,
-        sponsorPrize: Number(safeContestData.sponsorPrize) || 0,
-        prizePool: Number(finalPrizePool) || 0,
-        startTime: new Date(safeContestData.startTime).toISOString() 
-      };
+  ...safeContestData,
+  isInstantBattle: contestData.isInstantBattle,
+  useRandomQuestions: contestData.useRandomQuestions,
+  randomQuestionCount: contestData.randomQuestionCount,
+
+  entryFee: Number(safeContestData.entryFee) || 0,
+  maxParticipants: Number(safeContestData.maxParticipants) || 2,
+  duration: Number(safeContestData.duration) || 15,
+  commissionPercentage: Number(safeContestData.commissionPercentage) || 0,
+  sponsorPrize: Number(safeContestData.sponsorPrize) || 0,
+  prizePool: Number(finalPrizePool) || 0
+};
+
+// 🔥 only add startTime if NOT instant battle
+if (!contestData.isInstantBattle) {
+  payload.startTime = new Date(safeContestData.startTime).toISOString();
+}
 
       const response = await axiosInstance.post("/contest/create", payload);
       const res = response?.data || response;
