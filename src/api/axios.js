@@ -75,9 +75,18 @@ axiosInstance.interceptors.response.use(
     return response.data;
 
   },
-  async (error) => {
+async (error) => {
 
-    const { response, config } = error;
+  const { response, config } = error;
+
+  // 🔥 IGNORE CANCELLED REQUESTS (navigation or duplicate requests)
+  if (error.code === "ERR_CANCELED" || error.name === "CanceledError") {
+
+    const requestKey = `${config?.method}_${config?.url}`;
+    pendingRequests.delete(requestKey);
+
+    return Promise.reject(error);
+  }
 
     // 🔥 HANDLE 429: Rate Limit Protection
     if (response?.status === 429) {

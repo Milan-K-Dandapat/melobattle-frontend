@@ -137,14 +137,17 @@ if (socket) {
     );
   };
 
-  const handleContestFinalized = () => {
-    if (refreshUser) refreshUser();
-  };
+ const handleContestFinalized = () => {
 
-  const handleBattleStarted = () => {
-    // optional refresh
-    fetchDashboardData();
-  };
+  if (refreshUser) refreshUser();
+
+  // 🔥 refresh contest state so completed battles update instantly
+  fetchDashboardData();
+};
+
+ const handleBattleStarted = () => {
+  fetchDashboardData();
+};
 
   socket.off("NEW_CONTEST_DEPLOYED").on("NEW_CONTEST_DEPLOYED", handleNewContest);
   socket.off("PLAYER_JOINED_UPDATE").on("PLAYER_JOINED_UPDATE", handlePlayerUpdate);
@@ -163,6 +166,7 @@ return () => {
 
   window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 };
+
 
   }, [user, fetchDashboardData, refreshUser]);
 
