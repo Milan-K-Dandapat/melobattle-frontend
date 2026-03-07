@@ -366,23 +366,27 @@ if (!contestData.useRandomQuestions && contestData.questions.length === 0) {
     try {
       const { mediaFiles, ...safeContestData } = contestData;
       
-      const payload = { 
+const payload = {
   ...safeContestData,
   isInstantBattle: contestData.isInstantBattle,
   useRandomQuestions: contestData.useRandomQuestions,
   randomQuestionCount: contestData.randomQuestionCount,
 
   entryFee: Number(safeContestData.entryFee) || 0,
-  maxParticipants: Number(safeContestData.maxParticipants) || 2,
   duration: Number(safeContestData.duration) || 15,
   commissionPercentage: Number(safeContestData.commissionPercentage) || 0,
   sponsorPrize: Number(safeContestData.sponsorPrize) || 0,
   prizePool: Number(finalPrizePool) || 0
 };
 
-// 🔥 only add startTime if NOT instant battle
+// 🔥 Only add maxParticipants if NOT always-open battle
 if (!contestData.isInstantBattle) {
-  payload.startTime = new Date(safeContestData.startTime).toISOString();
+  payload.maxParticipants = Number(safeContestData.maxParticipants) || 2;
+}
+
+// 🔥 Only add startTime if NOT always-open battle
+if (!contestData.isInstantBattle && contestData.startTime) {
+  payload.startTime = new Date(contestData.startTime).toISOString();
 }
 
       const response = await axiosInstance.post("/contest/create", payload);
@@ -829,19 +833,6 @@ if (jsonInputRef.current) {
       </span>
     </div>
   </div>
-
-  <input
-    type="checkbox"
-    checked={contestData.isInstantBattle}
-    onChange={(e) =>
-      setContestData({
-        ...contestData,
-        isInstantBattle: e.target.checked,
-        startTime: e.target.checked ? "" : contestData.startTime
-      })
-    }
-    className="w-6 h-6 accent-indigo-500"
-  />
 </div>
 
                       <div className="grid grid-cols-4 gap-4">
