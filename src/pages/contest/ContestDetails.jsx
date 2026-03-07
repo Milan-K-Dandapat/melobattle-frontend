@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Trophy, Users, Timer, ArrowLeft, ShieldCheck, 
@@ -21,6 +21,7 @@ const ContestDetails = () => {
   const [isCompleted, setIsCompleted] = useState(false); 
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const actionLock = useRef(false);
 
   const particles = useMemo(() => {
     return Array.from({ length: 15 }).map((_, i) => ({
@@ -51,24 +52,37 @@ const ContestDetails = () => {
       const lbData = lbRes?.data?.data || lbRes?.data || lbRes;
       setLeaderboard(Array.isArray(lbData) ? lbData : []);
     } catch (err) {
-      console.error("Sync Error:", err);
-      toast.error("Arena connection lost.");
+
+  // 🔥 Ignore aborted axios requests
+  if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") {
+    return;
+  }
+
+  console.error("Sync Error:", err);
+  toast.error("Arena connection lost.");
+  
     } finally {
       setLoading(false);
     }
-  }, [id, contest]);
+  }, [id]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
 const handleAction = async () => {
+
+  // 🔒 Prevent spam clicking
+  if (actionLock.current) return;
+  actionLock.current = true;
   if (isCompleted) {
-    navigate(`/contest-leaderboard/${id}`);
-    return;
-  }
+  actionLock.current = false;
+  navigate(`/contest-leaderboard/${id}`);
+  return;
+}
 
   if (joined) {
+  actionLock.current = false;
     const now = new Date().getTime();
     const startTime = new Date(contest?.startTime).getTime();
     const durationMs = (contest?.duration || 15) * 60 * 1000;
@@ -99,12 +113,16 @@ const handleAction = async () => {
     return;
   }
 
- if (!contest) return;
+ if (!contest) {
+  actionLock.current = false;
+  return;
+}
 
 if ((contest.joinedCount || 0) >= (contest.maxParticipants || 0)) {
-    toast.error("ARENA FULL!");
-    return;
-  }
+  toast.error("ARENA FULL!");
+  actionLock.current = false;
+  return;
+}
 
 try {
   setJoining(true);
@@ -146,8 +164,14 @@ if (responseData?.isJoined === true) {
 }
 
 } catch (err) {
-  
+
+  // 🔥 Ignore cancelled requests
+  if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") {
+    return;
+  }
+
   const errorMsg = err.response?.data?.message || "";
+
   if (errorMsg.includes("already joined") || errorMsg.includes("already deployed")) {
     setJoined(true);
     setContest(prev => ({ ...prev, isJoined: true }));
@@ -157,6 +181,7 @@ if (responseData?.isJoined === true) {
   toast.error(errorMsg || "Join failed.");
 } finally {
   setJoining(false);
+  actionLock.current = false;
 }
 };
   const currentJoined = contest?.joinedCount || 0;
@@ -376,7 +401,10 @@ if (responseData?.isJoined === true) {
           <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-slate-50 via-white/95 to-transparent z-[110]">
             <motion.button
               whileTap={!joining && !(isArenaFull && !joined) ? { scale: 0.96 } : {}}
-              onClick={handleAction}
+              onClick={() => {
+  if (joining) return;
+  handleAction();
+}}
               disabled={joining || (isArenaFull && !joined)}
               className={`w-full max-w-md mx-auto py-5 rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 transition-all uppercase tracking-[0.2em] shadow-2xl border-b-4 active:border-b-0 ${
                 isCompleted

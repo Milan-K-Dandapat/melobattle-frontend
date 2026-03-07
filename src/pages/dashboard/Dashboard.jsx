@@ -55,12 +55,28 @@ const Dashboard = () => {
   try {
       if (contests.length === 0) setLoadingContests(true); 
       
-      const safeGet = (url) => axiosInstance.get(url).catch(err => err.response || err);
+     const safeGet = async (url) => {
+  try {
+    return await axiosInstance.get(url);
+  } catch (err) {
+
+    // 🔥 Ignore cancelled axios requests
+    if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") {
+      return null;
+    }
+
+    return err?.response || null;
+  }
+};
 
       const [contestResponse, categoryResponse] = await Promise.all([
         safeGet("/contest"),
         safeGet("/categories")
       ]);
+
+      if (!contestResponse || !categoryResponse) {
+  return;
+}
 
       // 🔥 BULLETPROOF BATTLE EXTRACTION (Matches AdminPanel)
       let battleArray = [];

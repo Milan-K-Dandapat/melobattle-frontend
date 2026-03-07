@@ -34,7 +34,7 @@ axiosInstance.interceptors.request.use(
     }
 
     // 🔥 Prevent duplicate simultaneous requests
-    const requestKey = `${config.method}_${config.url}`;
+    const requestKey = `${config.method}_${config.url}_${JSON.stringify(config.data || {})}`;
 
     if (pendingRequests.has(requestKey)) {
       pendingRequests.get(requestKey).abort();
@@ -79,18 +79,13 @@ async (error) => {
 
   const { response, config } = error;
 
-  // 🔥 IGNORE cancelled requests completely
-  if (error.code === "ERR_CANCELED" || error.name === "CanceledError") {
-    return Promise.resolve(); 
-  }
-
-  // 🔥 IGNORE CANCELLED REQUESTS (navigation or duplicate requests)
+  // 🔥 FIX: Ignore cancelled requests completely
   if (error.code === "ERR_CANCELED" || error.name === "CanceledError") {
 
     const requestKey = `${config?.method}_${config?.url}`;
     pendingRequests.delete(requestKey);
 
-    return Promise.reject(error);
+    return Promise.resolve(); // do NOT propagate error
   }
 
     // 🔥 HANDLE 429: Rate Limit Protection
