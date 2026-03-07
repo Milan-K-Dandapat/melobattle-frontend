@@ -459,23 +459,24 @@ return () => {
                 ) : filteredContests.length > 0 ? (
                   filteredContests?.map((c) => (
                     <BattleCard
-                      key={c._id} 
-                      id={c._id} 
-                      navigate={navigate} 
-                      title={c.title}
-                      prize={`₹${c.prizePool}`} 
-                      entry={c.entryFee === 0 ? "FREE" : `₹${c.entryFee}`} 
-                      spots={`${c.joinedCount}/${c.maxParticipants}`}
-                      isJoined={c.isJoined}
-                      isCompletedByUser={c.isCompletedByUser} 
-                      bannerImage={c.bannerImage}
-                      startTime={c.startTime} 
-                      duration={c.duration} 
-                      category={c.category} 
-                      subCategory={c.subCategory} 
-                      isFilling={c.joinedCount > ((c.maxParticipants || 1) * 0.8)}
-                      battleCode={c.battleCode} 
-                    />
+  key={c._id} 
+  id={c._id} 
+  navigate={navigate} 
+  title={c.title}
+  prize={`₹${c.prizePool}`} 
+  entry={c.entryFee === 0 ? "FREE" : `₹${c.entryFee}`} 
+  spots={`${c.joinedCount}/${c.maxParticipants}`}
+  isJoined={c.isJoined}
+  isCompletedByUser={c.isCompletedByUser} 
+  bannerImage={c.bannerImage}
+  startTime={c.startTime} 
+  duration={c.duration} 
+  category={c.category} 
+  subCategory={c.subCategory} 
+  isFilling={c.joinedCount > ((c.maxParticipants || 1) * 0.8)}
+  battleCode={c.battleCode}
+  isInstantBattle={c.isInstantBattle}   // ✅ ADD THIS LINE
+/>
                   ))
                 ) : (
                   <div className="col-span-1 md:col-span-2 bg-white rounded-3xl md:rounded-[2.5rem] p-10 md:p-16 text-center border-2 border-dashed border-slate-200 text-slate-400 font-black uppercase text-[9px] md:text-[10px] tracking-widest">
@@ -617,7 +618,7 @@ const StatCard = ({ icon, label, value, subValue, color }) => {
   );
 };
 
-const BattleCard = memo(({ id, navigate, title, prize, entry, spots, startTime, isFilling, category, subCategory, isJoined, isCompletedByUser, bannerImage, duration, battleCode }) => {
+const BattleCard = memo(({ id, navigate, title, prize, entry, spots, startTime, isFilling, category, subCategory, isJoined, isCompletedByUser, bannerImage, duration, battleCode, isInstantBattle }) => {
   const [timeLeft, setTimeLeft] = useState("");
   const [isUrgent, setIsUrgent] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
@@ -637,6 +638,13 @@ const BattleCard = memo(({ id, navigate, title, prize, entry, spots, startTime, 
   }, [startTime]);
 
   useEffect(() => {
+    // ✅ Always Open Battles
+if (isInstantBattle) {
+  setTimeLeft("ALWAYS OPEN");
+  setIsUrgent(false);
+  setIsClosed(false);
+  return;
+}
     const timer = setInterval(() => {
       const now = new Date().getTime();
       const start = new Date(startTime).getTime();
