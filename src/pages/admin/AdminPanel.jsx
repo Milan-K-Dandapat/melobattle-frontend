@@ -564,29 +564,37 @@ if (jsonInputRef.current) {
 
   const nowTime = Date.now();
   
-  const closedBattles = battles.filter(b => {
-    if (["COMPLETED", "PROCESSING", "ARCHIVED"].includes(b.status)) return true;
-    if (b.startTime) {
-       const startTs = new Date(b.startTime).getTime();
-       if (!isNaN(startTs)) {
-           const endTime = startTs + (b.duration || 15) * 60000;
-           if (nowTime > endTime) return true;
-       }
+ const closedBattles = battles.filter(b => {
+
+  // 🔥 Never close instant battles
+  if (b.isInstantBattle) return false;
+
+  if (["COMPLETED", "PROCESSING", "ARCHIVED"].includes(b.status)) return true;
+
+  if (b.startTime) {
+    const startTs = new Date(b.startTime).getTime();
+
+    if (!isNaN(startTs)) {
+      const endTime = startTs + (b.duration || 15) * 60000;
+
+      if (nowTime > endTime) return true;
     }
-    return false;
-  }).sort((a, b) => {
-     const dateA = new Date(a.startTime).getTime();
-     const dateB = new Date(b.startTime).getTime();
-     return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA); 
-  });
+  }
 
-  const activeBattles = battles.filter(b => !closedBattles.some(cb => cb._id === b._id))
-    .sort((a, b) => {
-       const dateA = new Date(a.startTime).getTime();
-       const dateB = new Date(b.startTime).getTime();
-       return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
-    });
+  return false;
 
+}).sort((a, b) => {
+
+  // 🔥 instant battles always stay on top
+  if (a.isInstantBattle && !b.isInstantBattle) return -1;
+  if (!a.isInstantBattle && b.isInstantBattle) return 1;
+
+  const dateA = new Date(a.startTime).getTime();
+  const dateB = new Date(b.startTime).getTime();
+
+  return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+
+});
   const displayedBattles = (signalFilter === "active" ? activeBattles : closedBattles).filter(b => {
     if (!searchQuery) return true;
     const searchLower = searchQuery.toLowerCase();
@@ -917,7 +925,9 @@ const progress = Math.min((joined / (b.maxParticipants || 1)) * 100, 100);
                                 <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-lg border inline-block italic ${signalFilter === "active" ? "text-purple-400 bg-purple-400/10 border-purple-400/20" : "text-emerald-400 bg-emerald-400/10 border-emerald-400/20"}`}>
                                   {b.category} {b.subCategory ? `› ${b.subCategory}` : ''}
                                 </span>
-                                <span className="text-[9px] font-black text-blue-400 uppercase bg-blue-400/10 px-3 py-1 rounded-lg border border-blue-400/20 inline-block italic">{b.duration || 15} MINS</span>
+                                <span className="text-[9px] font-black text-blue-400">
+{b.isInstantBattle ? "∞ OPEN" : `${b.duration || 15} MINS`}
+</span>
                                 <span className="text-[9px] font-black text-emerald-400 uppercase bg-emerald-400/10 px-3 py-1 rounded-lg border border-emerald-400/20 inline-block italic">{b.questions?.length || 0} QUESTS</span>
                               </div>
                               <p className={`text-xl font-black italic uppercase text-white leading-none mb-4 transition-colors ${signalFilter === "active" ? "group-hover:text-purple-400" : "group-hover:text-emerald-400"}`}>{b.title}</p>
