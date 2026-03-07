@@ -815,18 +815,22 @@ if (isInstantBattle) {
         </div>
       </div>
 
-      <button 
-        onClick={handleActionClick}
-        className={`relative z-10 w-full py-3 md:py-4 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1.5 md:gap-2 ${
-        isCompletedByUser || isClosed
-          ? "bg-slate-900 text-slate-400 border border-white/5 hover:bg-black shadow-xl"
-          : isJoined 
-            ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-100" 
-            : isUrgent
-              ? "bg-red-600 text-white animate-pulse shadow-red-200"
-              : "bg-purple-600 text-white hover:bg-purple-700 shadow-purple-200"
-      }`}>
-        {isCompletedByUser || isClosed
+    <button 
+  onClick={handleActionClick}
+  className={`relative z-10 w-full py-3 md:py-4 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1.5 md:gap-2 ${
+  isCompletedByUser || isClosed
+    ? "bg-slate-900 text-slate-400 border border-white/5 hover:bg-black shadow-xl"
+    : isJoined 
+      ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-100"
+      : isInstantBattle
+        ? "bg-red-600 text-white animate-pulse hover:bg-red-700 shadow-red-200"
+        : isUrgent
+          ? "bg-red-600 text-white animate-pulse shadow-red-200"
+          : "bg-purple-600 text-white hover:bg-purple-700 shadow-purple-200"
+}`}
+>
+
+{isCompletedByUser || isClosed
   ? <>View Standings <BarChart3 className="w-3.5 h-3.5 md:w-4 md:h-4"/></>
   : isJoined 
     ? "Continue to Arena"
@@ -834,8 +838,10 @@ if (isInstantBattle) {
       ? <>JOIN LIVE NOW <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4"/></>
       : isUrgent
         ? <>JOIN LIVE NOW <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4"/></>
-        : "Enter Arena"}
-      </button>
+        : "Enter Arena"
+}
+
+</button>
     </motion.div>
   );
 });
