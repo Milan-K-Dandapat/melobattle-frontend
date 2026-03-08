@@ -9,6 +9,7 @@ import confetti from 'canvas-confetti';
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import axiosInstance from "../../api/axios";
+import socket from "../../socket";
 
 const QuizResult = () => {
   const location = useLocation();
@@ -34,44 +35,7 @@ const recoveredState = savedResult ? JSON.parse(savedResult) : null;
 
   // 🔥 NEW: Submission state (ADDED ONLY)
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // 🔥 ADD THIS FUNCTION RIGHT HERE
-  const startLeaderboardPolling = () => {
-    if (!contestId) return;
-
-    setLoadingLB(true);
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await axiosInstance.get(
-          `/contest/${contestId}/leaderboard`
-        );
-
-        const lbData =
-          res?.data?.data ||
-          res?.data ||
-          [];
-
-        console.log("Live leaderboard:", lbData);
-
-        setTopWarriors(lbData.slice(0, 3));
-        setLoadingLB(false);
-
-      } catch (err) {
-        console.error("Leaderboard Polling Error:", err);
-      }
-    }, 2000);
-
-    // 🔥 AUTO STOP AFTER 60 SECONDS
-    setTimeout(() => clearInterval(interval), 60000);
-
-    return interval;
-  };
-
-  useEffect(() => {
-    // 🎊 1. ELITE CELEBRATION PROTOCOL
-    if (rank <= 3) {
-      // 🔥 Save result so refresh doesn't break the page
+  // 🔥 Save result so refresh doesn't break page
 useEffect(() => {
   if (location.state) {
     sessionStorage.setItem(
@@ -81,6 +45,12 @@ useEffect(() => {
   }
 }, [location.state]);
 
+  // 🔥 ADD THIS FUNCTION RIGHT HERE
+
+  useEffect(() => {
+    // 🎊 1. ELITE CELEBRATION PROTOCOL
+    if (rank <= 3) {
+      // 🔥 Save result so refresh doesn't break the page
       const duration = 4 * 1000;
       const end = Date.now() + duration;
       const frame = () => {
@@ -96,7 +66,7 @@ useEffect(() => {
   useEffect(() => {
     if (!contestId) return;
 
-    let intervalRef;
+  
 
     const submitAndStartPolling = async () => {
       try {
@@ -123,7 +93,6 @@ useEffect(() => {
           );
         }
 
-        intervalRef = startLeaderboardPolling();
 
       } catch (err) {
         console.log("Submit failed:", err.response?.data);
@@ -133,11 +102,30 @@ useEffect(() => {
       }
     };
 
-    submitAndStartPolling();
+   submitAndStartPolling();
+
+// 🔥 Join contest room for realtime leaderboard
+socket.emit("JOIN_CONTEST_ROOM", contestId);
+
+// prevent duplicate listeners
+socket.off("LEADERBOARD_UPDATE");
+
+socket.on("LEADERBOARD_UPDATE", (data) => {
+
+  const lbData =
+    data?.data ||
+    data ||
+    [];
+
+  setTopWarriors(lbData.slice(0,3));
+  setLoadingLB(false);
+
+});
+    // initial leaderboard fetch
 
     return () => {
-      if (intervalRef) clearInterval(intervalRef);
-    };
+  socket.off("LEADERBOARD_UPDATE");
+};
 
   }, [contestId]);
 

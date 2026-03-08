@@ -114,15 +114,11 @@ const Dashboard = () => {
 }
   }, [contests.length]);
 
-  useEffect(() => {
-    if (user && contests.length === 0 && !isFetching.current) {
-  fetchDashboardData();
-}
+useEffect(() => {
+  if (user && contests.length === 0 && !isFetching.current) {
+    fetchDashboardData();
+  }
 
-    // 🔥 Sync balance on dashboard mount to reflect recent deposits
-    if (user && refreshUser) {
-      refreshUser();
-    }
 
     // 🔥 PWA Install Listener
     const handleBeforeInstallPrompt = (e) => {
@@ -185,7 +181,13 @@ return () => {
 };
 
 
-  }, [user, fetchDashboardData, refreshUser]);
+  }, [user, fetchDashboardData]);
+
+  useEffect(() => {
+  if (user) {
+    refreshUser();
+  }
+}, [user]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
