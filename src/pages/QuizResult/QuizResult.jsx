@@ -105,7 +105,7 @@ useEffect(() => {
    submitAndStartPolling();
 
 // 🔥 Join contest room for realtime leaderboard
-socket.emit("JOIN_CONTEST_ROOM", contestId);
+socket.emit("join_contest", contestId);
 
 // prevent duplicate listeners
 socket.off("LEADERBOARD_UPDATE");

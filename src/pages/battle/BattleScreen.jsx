@@ -24,6 +24,7 @@ const BattleScreen = () => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [isSyncing, setIsSyncing] = useState(true);
   const [shake, setShake] = useState(false);
+  const [isInstantBattle, setIsInstantBattle] = useState(false);
 
   // Time Tracking for Analytics
   const startTimeRef = useRef(Date.now());
@@ -66,8 +67,9 @@ if (result?.questions && result.questions.length > 0) {
 
   // 🔥 INSTANT BATTLE SUPPORT
   if (result?.isInstantBattle) {
-    toast.success("INSTANT BATTLE STARTED", { icon: '⚡' });
-  } else {
+  setIsInstantBattle(true);   // 🔥 IMPORTANT
+  toast.success("INSTANT BATTLE STARTED", { icon: '⚡' });
+} else {
     toast.success("ARENA SYNCED", { icon: '🛡️' });
   }
 
@@ -99,7 +101,7 @@ if (result?.questions && result.questions.length > 0) {
 
   // 🔥 3. ADMIN TOTAL SESSION ENFORCER
   useEffect(() => {
-    if (totalTimeLeft > 0 && !isGameOver && !isSyncing) {
+  if (!isInstantBattle && totalTimeLeft > 0 && !isGameOver && !isSyncing) {
       const sessionTimer = setInterval(() => {
         setTotalTimeLeft((prev) => {
           if (prev <= 1) {

@@ -85,8 +85,12 @@ const handleAction = async () => {
   actionLock.current = false;
     const now = new Date().getTime();
     const startTime = new Date(contest?.startTime).getTime();
-    const durationMs = (contest?.duration || 15) * 60 * 1000;
-    const endTime = startTime + durationMs;
+    let endTime = Infinity;
+
+if (!contest?.isInstantBattle) {
+  const durationMs = (contest?.duration || 15) * 60 * 1000;
+  endTime = startTime + durationMs;
+}
     
     // 🔥 ALWAYS go to Lobby if early.
     if (now < startTime - 10000) {
@@ -100,10 +104,11 @@ const handleAction = async () => {
       } else {
         navigate(`/battle/${id}`);
       }
-    } else if (now > endTime) {
-      toast.error("BATTLE TERMINATED: SESSION CLOSED");
-      navigate(`/contest-leaderboard/${id}`);
-    } else {
+    } else if (!contest?.isInstantBattle && now > endTime) {
+  toast.error("BATTLE TERMINATED: SESSION CLOSED");
+  navigate(`/contest-leaderboard/${id}`);
+}
+     else {
       if (contest?.category === "LIVE CODING SOLVE") {
         navigate(`/live-compiler/${id}`);
       } else {
