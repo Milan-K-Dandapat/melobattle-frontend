@@ -11,7 +11,7 @@ import confetti from 'canvas-confetti';
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import axiosInstance from "../../api/axios";
-import socket from "../../socket";
+
 
 const QuizResult = () => {
   const location = useLocation();
