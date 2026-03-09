@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import socket from "../../socket";
-import { getUserBadge } from "../../utils/getUserBadge";
+import getUserBadge from "../../utils/getUserBadge";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Trophy, Clock, Zap, Target, Share2, 
