@@ -120,8 +120,6 @@ axiosInstance
 socket.emit("join_contest", contestId);
 
 // prevent duplicate listeners
-socket.off("LEADERBOARD_UPDATE");
-
 socket.off("LEADERBOARD_UPDATE").on("LEADERBOARD_UPDATE", (data) => {
 
   const lbData =
