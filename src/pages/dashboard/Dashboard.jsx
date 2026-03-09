@@ -421,15 +421,14 @@ if (!c.isInstantBattle) {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+            <StatCard icon={<Trophy className="text-amber-500 w-5 h-5 md:w-6 md:h-6"/>} label="Total Wins" value={user?.totalWins || 0} subValue="Victories" color="amber" />
+            <StatCard icon={<TrendingUp className="text-emerald-500 w-5 h-5 md:w-6 md:h-6"/>} label="Withdrawn" value={`₹${user?.totalWithdrawn || 0}`} subValue="Payouts" color="emerald" />
             <StatCard
   icon={<BadgeIcon className={userBadge.color} />}
   label={userBadge.name}
   value={user?.rating || 1000}
   subValue="Skill Rank"
 />
-            <StatCard icon={<Trophy className="text-amber-500 w-5 h-5 md:w-6 md:h-6"/>} label="Total Wins" value={user?.totalWins || 0} subValue="Victories" color="amber" />
-            <StatCard icon={<TrendingUp className="text-emerald-500 w-5 h-5 md:w-6 md:h-6"/>} label="Withdrawn" value={`₹${user?.totalWithdrawn || 0}`} subValue="Payouts" color="emerald" />
-            <StatCard icon={<Percent className="text-blue-500 w-5 h-5 md:w-6 md:h-6"/>} label="Skill Rank" value={user?.rating || 1000} subValue="Elo Rating" color="blue" />
             <StatCard icon={<Users className="text-purple-500 w-5 h-5 md:w-6 md:h-6"/>} label="Battles" value={user?.totalMatches || 0} subValue="Matches" color="purple" />
           </div>
 
