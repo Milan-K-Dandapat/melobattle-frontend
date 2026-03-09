@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import socket from "../../socket";
+import { getUserBadge } from "../../utils/getUserBadge";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Trophy, Clock, Zap, Target, Share2, 
@@ -219,19 +221,21 @@ if (!location.state && !recoveredState) {
                       <Loader2 className="animate-spin text-white/20 w-4 h-4 md:w-5 md:h-5" />
                    </div>
                 ) : topWarriors.length > 0 ? (
-                   topWarriors.map((w, i) => (
+                 topWarriors.map((w, i) => (
                       <LeaderboardRow 
-                        key={i} 
-                        rank={i+1} 
-                        name={w.username || w.name || w.user?.username}
-                        score={w.score || w.points || 0} 
-                        isUser={
-                          w.userId === user?._id ||
-                          w._id === user?._id ||
-                          w.user?._id === user?._id
-                        }
-                      />
-                   ))
+                       key={i} 
+                       rank={i+1} 
+                       name={w.username || w.name || w.user?.username}
+                       score={w.score || w.points || 0}
+                       player={w}
+                       isUser={
+                       w.userId === user?._id ||
+                       w._id === user?._id ||
+                       w.user?._id === user?._id
+                   }
+                 />
+                ))
+                
                 ) : (
                    <p className="text-[8px] md:text-[9px] text-slate-500 font-bold uppercase py-4 md:py-6">Awaiting rankings...</p>
                 )}
@@ -303,19 +307,47 @@ const SocialBtn = ({ icon, label, color, onClick }) => (
   </button>
 );
 
-const LeaderboardRow = ({ rank, name, score, isUser }) => (
-  <div className={`flex justify-between items-center p-2 md:p-3.5 rounded-xl md:rounded-2xl transition-all ${isUser ? 'bg-indigo-500/20 border border-indigo-500/30' : 'bg-white/5 border border-transparent'}`}>
-     <div className="flex items-center gap-2 md:gap-3">
-        <span className={`text-[9px] md:text-[10px] font-black ${rank === 1 ? 'text-amber-400' : 'text-slate-500'}`}>#{rank}</span>
-        <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-tight truncate max-w-[80px] md:max-w-[120px] ${isUser ? 'text-white' : 'text-slate-300'}`}>
-          {name} {isUser && <span className="text-indigo-400 ml-1">★</span>}
+const LeaderboardRow = ({ rank, name, score, isUser, player }) => {
+
+  const badge = getUserBadge(player);
+
+  return (
+    <div className={`flex justify-between items-center p-2 md:p-3.5 rounded-xl md:rounded-2xl transition-all ${isUser ? 'bg-indigo-500/20 border border-indigo-500/30' : 'bg-white/5 border border-transparent'}`}>
+      
+      <div className="flex items-center gap-2 md:gap-3">
+
+        <span className={`text-[9px] md:text-[10px] font-black ${rank === 1 ? 'text-amber-400' : 'text-slate-500'}`}>
+          #{rank}
         </span>
-     </div>
-     <div className="flex items-center gap-1 md:gap-1.5">
-        <span className="text-[9px] md:text-[10px] font-black italic text-indigo-400">{score}</span>
-        <span className="text-[6px] md:text-[7px] font-black text-slate-500 uppercase">XP</span>
-     </div>
-  </div>
-);
+
+        <div className="flex flex-col">
+
+          <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-tight truncate max-w-[120px] ${isUser ? 'text-white' : 'text-slate-300'}`}>
+            {name} {isUser && <span className="text-indigo-400 ml-1">★</span>}
+          </span>
+
+          {/* 🏆 Badge */}
+          {badge && (
+            <span className={`text-[7px] font-black uppercase ${badge.color}`}>
+              {badge.name}
+            </span>
+          )}
+
+        </div>
+
+      </div>
+
+      <div className="flex items-center gap-1 md:gap-1.5">
+        <span className="text-[9px] md:text-[10px] font-black italic text-indigo-400">
+          {score}
+        </span>
+        <span className="text-[6px] md:text-[7px] font-black text-slate-500 uppercase">
+          XP
+        </span>
+      </div>
+
+    </div>
+  );
+};
 
 export default QuizResult;

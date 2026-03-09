@@ -13,6 +13,7 @@ import axiosInstance from "../../api/axios";
 import MusicPlayer from "../../components/MusicPlayer";
 import socket from "../../socket"; 
 import { toast } from "react-hot-toast";
+import getUserBadge from "../../utils/getUserBadge";
 
 // Helper for dynamic icons
 const getCategoryIcon = (name) => {
@@ -45,6 +46,8 @@ const Dashboard = () => {
   const [isInstallable, setIsInstallable] = useState(false);
 
   const { user, logout, loading: authLoading, refreshUser } = useAuth(); // 🔥 refreshUser added for balance sync
+  const userBadge = getUserBadge(user?.rating || 0, user?.totalWins || 0);
+const BadgeIcon = userBadge.icon;
   const navigate = useNavigate();
 
   const fetchDashboardData = useCallback(async () => {
@@ -347,10 +350,19 @@ if (!c.isInstantBattle) {
 
           <div className="p-4 border-t border-slate-100 bg-slate-50/50">
               <div className={`flex flex-col ${!open && 'items-center'}`}>
-                <div className="flex justify-between text-[10px] font-black text-slate-400 mb-2">
-                   {open && <span className="tracking-widest uppercase">Skill Level</span>}
-                   {open && <span className="text-purple-600">{user?.rating || 1000}</span>}
-                </div>
+                <div className="flex justify-between items-center text-[10px] font-black text-slate-400 mb-2">
+  {open && <span className="tracking-widest uppercase">Skill Level</span>}
+
+  {open && (
+    <div className="flex items-center gap-1">
+      {BadgeIcon && <BadgeIcon className={`w-3.5 h-3.5 ${userBadge.color}`} />}
+      <span className={`font-black ${userBadge.color}`}>
+        {userBadge.name}
+      </span>
+      <span className="text-purple-600">{user?.rating || 1000}</span>
+    </div>
+  )}
+</div>
                 <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden border border-slate-100 shadow-inner">
                    <motion.div initial={{ width: 0 }} animate={{ width: "60%" }} className="bg-gradient-to-r from-purple-600 to-indigo-500 h-full" />
                 </div>
@@ -409,6 +421,12 @@ if (!c.isInstantBattle) {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+            <StatCard
+  icon={<BadgeIcon className={userBadge.color} />}
+  label={userBadge.name}
+  value={user?.rating || 1000}
+  subValue="Skill Rank"
+/>
             <StatCard icon={<Trophy className="text-amber-500 w-5 h-5 md:w-6 md:h-6"/>} label="Total Wins" value={user?.totalWins || 0} subValue="Victories" color="amber" />
             <StatCard icon={<TrendingUp className="text-emerald-500 w-5 h-5 md:w-6 md:h-6"/>} label="Withdrawn" value={`₹${user?.totalWithdrawn || 0}`} subValue="Payouts" color="emerald" />
             <StatCard icon={<Percent className="text-blue-500 w-5 h-5 md:w-6 md:h-6"/>} label="Skill Rank" value={user?.rating || 1000} subValue="Elo Rating" color="blue" />

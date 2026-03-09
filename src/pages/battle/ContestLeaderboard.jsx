@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import axiosInstance from "../../api/axios";
 import { toast } from "react-hot-toast";
+import getUserBadge from "../../utils/getUserBadge";
 
 const ContestLeaderboard = () => {
   const { id } = useParams();
@@ -141,38 +142,93 @@ const ContestLeaderboard = () => {
 
 /* --- SUB-COMPONENTS --- */
 
-const PodiumCard = ({ user, rank, color, border, isWinner = false }) => (
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: rank * 0.1 }}
-    className={`flex flex-col items-center gap-2 md:gap-3 ${isWinner ? 'order-2 z-10' : rank === 2 ? 'order-1' : 'order-3'}`}
-  >
-    <div className={`relative ${isWinner ? 'w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24' : 'w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20'}`}>
-      {isWinner && <Crown className="absolute -top-4 md:-top-6 left-1/2 -translate-x-1/2 text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)] w-6 h-6 md:w-8 md:h-8" fill="currentColor"/>}
-      <div className={`w-full h-full rounded-2xl md:rounded-[2rem] border-2 ${border} overflow-hidden p-0.5 md:p-1 bg-white/5 backdrop-blur-md`}>
-         <img src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username || rank}`} className="w-full h-full object-cover rounded-[0.9rem] md:rounded-[1.8rem]" alt="" />
+const PodiumCard = ({ user, rank, color, border, isWinner = false }) => {
+  const badge = getUserBadge(user?.rating || 0, user?.wins || 0);
+  const BadgeIcon = badge.icon;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: rank * 0.1 }}
+     className={`flex flex-col items-center gap-2 md:gap-3
+${isWinner ? 'order-2 z-10 drop-shadow-[0_0_20px_rgba(251,191,36,0.6)]'
+: rank === 2 ? 'order-1 drop-shadow-[0_0_15px_rgba(203,213,225,0.5)]'
+: 'order-3 drop-shadow-[0_0_12px_rgba(251,146,60,0.4)]'}`}
+    >
+      <div className={`relative ${isWinner ? 'w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24' : 'w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20'}`}>
+        
+        {isWinner && (
+          <Crown
+            className="absolute -top-4 md:-top-6 left-1/2 -translate-x-1/2 text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)] w-6 h-6 md:w-8 md:h-8"
+            fill="currentColor"
+          />
+        )}
+
+        <div className={`w-full h-full rounded-2xl md:rounded-[2rem] border-2 ${border} overflow-hidden p-0.5 md:p-1 bg-white/5 backdrop-blur-md`}>
+          <img
+            src={
+              user?.avatar ||
+              `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username || rank}`
+            }
+            className="w-full h-full object-cover rounded-[0.9rem] md:rounded-[1.8rem]"
+            alt=""
+          />
+        </div>
+
+        <div
+          className={`absolute -bottom-1.5 md:-bottom-2 left-1/2 -translate-x-1/2 w-5 h-5 md:w-8 md:h-8 rounded-md md:rounded-xl bg-[#050810] border ${border} flex items-center justify-center font-black text-[9px] md:text-xs ${color}`}
+        >
+          {rank}
+        </div>
       </div>
-      <div className={`absolute -bottom-1.5 md:-bottom-2 left-1/2 -translate-x-1/2 w-5 h-5 md:w-8 md:h-8 rounded-md md:rounded-xl bg-[#050810] border ${border} flex items-center justify-center font-black text-[9px] md:text-xs ${color}`}>
-        {rank}
+
+      <div className="text-center mt-0.5 md:mt-0">
+
+        {/* USERNAME */}
+        <p
+          className={`font-black text-[9px] md:text-xs uppercase tracking-tighter truncate w-16 sm:w-20 md:w-24 ${
+            isWinner ? "text-white" : "text-slate-400"
+          }`}
+        >
+          {user ? user.username : "Waiting..."}
+        </p>
+
+        {/* BADGE */}
+        <div className="flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10">
+  {BadgeIcon && <BadgeIcon className={`w-3 h-3 ${badge.color}`} />}
+
+  {/* BADGE */}
+<div className="flex items-center gap-1 mt-0.5">
+  {BadgeIcon && <BadgeIcon className={`w-3 h-3 ${badge.color}`} />}
+
+  <span className={`text-[7px] md:text-[8px] font-black ${badge.color}`}>
+    {badge.name}
+  </span>
+</div>
+</div>
+        {/* SCORE */}
+        <p className={`text-[8px] md:text-[10px] font-black italic ${color}`}>
+          {user && typeof user.score === "number"
+            ? Math.floor(user.score).toLocaleString() + " XP"
+            : "--"}
+        </p>
+
+        {/* PRIZE */}
+        {user?.prizeWon > 0 && (
+          <span className="text-[8px] md:text-[10px] font-black text-emerald-400">
+            ₹{user.prizeWon}
+          </span>
+        )}
       </div>
-    </div>
-    <div className="text-center mt-0.5 md:mt-0">
-      <p className={`font-black text-[9px] md:text-xs uppercase tracking-tighter truncate w-16 sm:w-20 md:w-24 ${isWinner ? 'text-white' : 'text-slate-400'}`}>
-        {user ? user.username : "Waiting..."}
-      </p>
-      <p className={`text-[8px] md:text-[10px] font-black italic ${color}`}>
-        {user && typeof user.score === "number"
-          ? Math.floor(user.score).toLocaleString() + " XP"
-          : "--"}
-      </p>
-      {user?.prizeWon > 0 && <span className="text-[8px] md:text-[10px] font-black text-emerald-400">₹{user.prizeWon}</span>}
-    </div>
-  </motion.div>
-);
+    </motion.div>
+  );
+};
 
 const StandingRow = ({ player }) => {
   const navigate = useNavigate();
+  const badge = getUserBadge(player?.rating || 0, player?.wins || 0);
+  const BadgeIcon = badge.icon;
 
   return (
     <motion.div
@@ -185,10 +241,13 @@ const StandingRow = ({ player }) => {
           : ""
       }`}
     >
-      <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
-        <span className="w-4 md:w-6 text-center font-black text-[9px] md:text-xs text-slate-500 italic shrink-0">
-          #{player.rank || "--"}
-        </span>
+     <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
+  <span className="w-4 md:w-6 text-center font-black text-[9px] md:text-xs text-slate-500 italic shrink-0">
+    {player.rank === 1 ? "🥇" :
+     player.rank === 2 ? "🥈" :
+     player.rank === 3 ? "🥉" :
+     player.rank ? `#${player.rank}` : "--"}
+  </span>
 
         <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg md:rounded-2xl bg-white/5 p-0.5 border border-white/10 shrink-0">
           <img
@@ -201,26 +260,35 @@ const StandingRow = ({ player }) => {
           />
         </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="font-black text-[10px] sm:text-xs md:text-sm uppercase tracking-tight flex items-center gap-1.5 truncate">
-            <span className="truncate">{player.username}</span>
-            {player.isCurrentUser && (
-              <span className="text-[6px] md:text-[8px] bg-purple-600 px-1.5 md:px-2 py-0.5 rounded-full font-black tracking-widest shrink-0">
-                (YOU)
-              </span>
-            )}
-          </p>
+       <div className="min-w-0 flex-1">
+  <div>
+    <p className="font-black text-[10px] sm:text-xs md:text-sm uppercase tracking-tight flex items-center gap-1.5 truncate">
+      <span className="truncate">{player.username}</span>
 
-          <div className="flex items-center gap-2 md:gap-3 mt-0.5 md:mt-1">
-            <div className="flex items-center gap-1 text-[7px] sm:text-[8px] md:text-[9px] font-bold text-slate-500 uppercase">
-              {player.accuracy || 0}%
-            </div>
-            <div className="flex items-center gap-1 text-[7px] sm:text-[8px] md:text-[9px] font-bold text-slate-500 uppercase">
-              {player.time || 0}s
-            </div>
-          </div>
-        </div>
-      </div>
+      {player.isCurrentUser && (
+        <span className="text-[6px] md:text-[8px] bg-purple-600 px-1.5 md:px-2 py-0.5 rounded-full font-black tracking-widest shrink-0">
+          (YOU)
+        </span>
+      )}
+    </p>
+
+    {/* BADGE */}
+    <span className={`text-[7px] md:text-[8px] font-black ${badge.color}`}>
+      {badge.name}
+    </span>
+  </div>
+
+  <div className="flex items-center gap-2 md:gap-3 mt-0.5 md:mt-1">
+    <div className="flex items-center gap-1 text-[7px] sm:text-[8px] md:text-[9px] font-bold text-slate-500 uppercase">
+      {player.accuracy || 0}%
+    </div>
+
+    <div className="flex items-center gap-1 text-[7px] sm:text-[8px] md:text-[9px] font-bold text-slate-500 uppercase">
+      {player.time || 0}s
+    </div>
+  </div>
+</div>
+</div>
 
       <div className="text-right shrink-0 ml-2">
         <p className="text-[10px] sm:text-xs md:text-sm font-black italic tracking-tighter text-white">
