@@ -104,13 +104,25 @@ useEffect(() => {
 
    submitAndStartPolling();
 
+   // 🔥 Fetch initial leaderboard (important)
+axiosInstance
+  .get(`/contest/${contestId}/leaderboard`)
+  .then((res) => {
+    const lb = res?.data?.data || [];
+    setTopWarriors(lb.slice(0, 3));
+    setLoadingLB(false);
+  })
+  .catch(() => {
+    setLoadingLB(false);
+  });
+
 // 🔥 Join contest room for realtime leaderboard
 socket.emit("join_contest", contestId);
 
 // prevent duplicate listeners
 socket.off("LEADERBOARD_UPDATE");
 
-socket.on("LEADERBOARD_UPDATE", (data) => {
+socket.off("LEADERBOARD_UPDATE").on("LEADERBOARD_UPDATE", (data) => {
 
   const lbData =
     data?.data ||
