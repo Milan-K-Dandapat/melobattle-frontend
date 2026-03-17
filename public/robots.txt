@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /sitemap.xml
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /wallet-history
+
+Sitemap: https://battle.meloapp.in/sitemap.xml

@@ -101,9 +101,10 @@ const Login = () => {
             transition={{ duration: 0.8 }}
             className="text-center md:text-left"
           >
-            <motion.h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold leading-tight mt-2 md:mt-6 text-white uppercase italic tracking-tighter">
-              MELO <span className="text-purple-600">BATTLE</span>
-            </motion.h1>
+            {/* 🔥 SEO Optimized H1 Tag */}
+<motion.h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold leading-tight mt-2 md:mt-6 text-white uppercase italic tracking-tighter">
+  MELO <span className="text-purple-600">BATTLE</span>
+</motion.h1>
 
             <p className="mt-2 md:mt-6 text-sm md:text-xl text-gray-300 max-w-md mx-auto md:mx-0">
               Compete in real-time skill battles. Win rewards. Rise in leaderboard.
@@ -203,6 +204,23 @@ const Login = () => {
           </motion.div>
         </div>
       </div>
+      {/* 🔥 SEO OPTIMIZED FOOTER: Helps ranking for keywords without logging in */}
+<motion.div 
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 0.6 }}
+  className="mt-12 text-center max-w-3xl mx-auto pb-10 px-4"
+>
+  <h2 className="text-sm md:text-lg font-black uppercase tracking-tighter text-purple-400">
+    Melo Battle | Live Quiz Gaming & Real-Time Rewards Arena
+  </h2>
+  <p className="mt-3 text-[10px] md:text-xs font-medium text-slate-400 leading-relaxed">
+    Melo Battle is the premier skill-based gaming arena designed for knowledge enthusiasts. 
+    Join over 12,000 players competing in real-time quiz battles. Showcase your expertise, 
+    climb the global leaderboard, and win from a prize pool of ₹250,000+. Our advanced 
+    fair-play protocols and instant synchronization ensure the most competitive and rewarding 
+    experience in the gaming arena.
+  </p>
+</motion.div>
 
       {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
     </div>

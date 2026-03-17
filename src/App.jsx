@@ -56,6 +56,14 @@ const SeasonResetListener = () => {
 function App() {
   const [entered, setEntered] = useState(false);
 
+  // 🔥 SEO BYPASS: Ensure Google bots aren't stuck at the Intro screen
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === "/sitemap.xml" || path === "/robots.txt") {
+      setEntered(true);
+    }
+  }, []);
+
   const handleEnter = () => {
     setEntered(true);
   };
