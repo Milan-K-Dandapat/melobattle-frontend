@@ -21,36 +21,47 @@ export function PrivacyPolicy() {
     <div className="min-h-screen bg-gradient-to-br from-purple-100 via-white to-indigo-100 p-6">
       <Section title="Privacy Policy">
         <p>
-          Melo Battle respects your privacy and is committed to protecting your
-          personal information.
+          Melo Battle ("we", "our", "platform") values your privacy and ensures
+          protection of your personal data.
         </p>
 
         <p>
-          We collect limited user data such as name, email, phone number, and
-          payment details strictly for account creation, wallet transactions,
-          platform security, and improving user experience.
-        </p>
-
-        <p>
-          We do NOT sell or share your personal data with third parties except:
+          We collect limited information such as name, email, phone number, and
+          transaction details for:
         </p>
 
         <ul className="list-disc ml-6">
-          <li>Payment gateways (for secure transactions)</li>
+          <li>User account creation</li>
+          <li>Wallet transactions</li>
+          <li>Security and fraud prevention</li>
+          <li>Improving user experience</li>
+        </ul>
+
+        <p>
+          We do NOT sell or rent your data. Your information may only be shared
+          with:
+        </p>
+
+        <ul className="list-disc ml-6">
+          <li>Secure payment gateways (Instamojo, etc.)</li>
           <li>Legal authorities if required by law</li>
         </ul>
 
         <p>
-          All transactions are processed via secure third-party payment
-          providers and we do not store sensitive payment credentials.
+          All payments are processed via trusted third-party providers. We do
+          not store sensitive financial data like card details.
         </p>
 
         <p>
-          This platform is strictly intended for users aged 18 years or above.
+          Users must be <b>18 years or older</b> to use this platform.
         </p>
 
         <p className="font-semibold text-purple-700">
-          Contact: support@battle.meloapp.in
+          📧 Email: support@battle.meloapp.in
+        </p>
+
+        <p className="text-xs text-gray-500">
+          Last updated: {new Date().getFullYear()}
         </p>
       </Section>
     </div>
@@ -62,30 +73,35 @@ export function Terms() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-white to-purple-100 p-6">
       <Section title="Terms & Conditions">
-        <p>By using Melo Battle, you agree to the following terms:</p>
+        <p>By using Melo Battle, you agree to the following:</p>
 
         <ul className="list-disc ml-6">
-          <li>You must be 18 years or older.</li>
+          <li>You must be 18 years or older</li>
           <li>
-            Melo Battle is a skill-based quiz platform where users participate
-            in knowledge-based contests.
+            Melo Battle is a <b>skill-based quiz platform</b>, not gambling
           </li>
           <li>
-            A platform fee may be charged on contest entries (not real money
-            betting).
+            Entry fees may include a small platform fee for operations
           </li>
           <li>
-            Any fraudulent activity, cheating, or misuse will lead to permanent
-            account suspension.
+            Any cheating, bot usage, or fraud will result in account suspension
           </li>
           <li>
-            Melo Battle does not guarantee winnings and results depend on user
-            performance.
+            Winnings depend on skill, accuracy, and performance
           </li>
         </ul>
 
         <p>
-          All disputes are subject to jurisdiction under the laws of India.
+          Melo Battle is not responsible for losses due to user decisions or
+          gameplay performance.
+        </p>
+
+        <p>
+          All disputes are governed by the laws of <b>India</b>.
+        </p>
+
+        <p className="font-semibold text-purple-700">
+          Company: Melo Battle (India)
         </p>
       </Section>
     </div>
@@ -98,20 +114,20 @@ export function RefundPolicy() {
     <div className="min-h-screen bg-gradient-to-br from-purple-100 via-white to-indigo-100 p-6">
       <Section title="Refund & Cancellation Policy">
         <p>
-          Deposited wallet balance is non-withdrawable and can only be used
-          within the Melo Battle platform for contest participation.
+          Deposited wallet balance is non-withdrawable and is intended only for
+          platform usage.
         </p>
 
-        <p>Refunds are allowed only under the following conditions:</p>
+        <p>Refunds are applicable only in the following cases:</p>
 
         <ul className="list-disc ml-6">
-          <li>Payment deducted but transaction failed</li>
+          <li>Payment deducted but not credited</li>
           <li>Duplicate payment</li>
-          <li>Technical error during contest entry</li>
+          <li>Technical failure during contest entry</li>
         </ul>
 
         <p>
-          Refund requests must be submitted within <b>48 hours</b> of the issue.
+          Refund requests must be submitted within <b>48 hours</b>.
         </p>
 
         <p>
@@ -119,8 +135,11 @@ export function RefundPolicy() {
         </p>
 
         <p className="text-sm text-gray-500">
-          Note: Platform fees are non-refundable once a contest is successfully
-          joined.
+          Platform/service fees are non-refundable once a contest is joined.
+        </p>
+
+        <p className="font-semibold text-purple-700">
+          📧 support@battle.meloapp.in
         </p>
       </Section>
     </div>
@@ -141,15 +160,29 @@ export function Contact() {
         </h1>
 
         <p className="text-gray-700 mb-4">
-          Need help or have questions? Our support team is here for you.
+          For any queries, support, or payment issues, feel free to contact us.
         </p>
 
-        <p className="text-lg font-bold text-purple-600">
-          support@battle.meloapp.in
-        </p>
+        <div className="space-y-2 text-sm">
+          <p className="font-bold text-purple-600">
+            📧 support@battle.meloapp.in
+          </p>
 
-        <p className="mt-4 text-gray-500 text-sm">
-          ⏱ Response time: within 24 hours
+          <p className="text-gray-600">
+            🌐 Website: https://battle.meloapp.in
+          </p>
+
+          <p className="text-gray-600">
+            📍 Location: India
+          </p>
+
+          <p className="text-gray-600">
+            ⏱ Support Time: 10 AM – 8 PM (Mon–Sat)
+          </p>
+        </div>
+
+        <p className="mt-6 text-gray-500 text-xs">
+          We usually respond within 24 hours.
         </p>
       </motion.div>
     </div>
