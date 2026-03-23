@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
@@ -6,35 +6,20 @@ import {
   ChevronRight, Zap 
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { load } from '@cashfreepayments/cashfree-js';
-import axiosInstance from "../../api/axios"; // Adjust path if your axios instance is located elsewhere
+import axiosInstance from "../../api/axios"; 
 import { toast } from "react-hot-toast";
 
 const DepositPage = () => {
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth(); // 🔥 Added refreshUser to update balance instantly
+  const { user, refreshUser } = useAuth(); 
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
-  const [cashfree, setCashfree] = useState(null);
 
-  // Compact selection for a professional look
   const quickAmounts = [10, 50, 100, 500];
-
-  // Initialize Cashfree SDK on component mount
-  useEffect(() => {
-    const initializeSDK = async () => {
-      const cashfreeInstance = await load({
-        mode: "sandbox" // 🔥 Change this to "production" later when using real money
-      });
-      setCashfree(cashfreeInstance);
-    };
-    initializeSDK();
-  }, []);
 
   const handleDeposit = async (e) => {
     e.preventDefault();
     
-    // 🔥 Minimum check
     if (amount < 5) {
       toast.error("Minimum amount to add is ₹5");
       return;
@@ -46,70 +31,31 @@ const DepositPage = () => {
       // Step 1: Create Order in Backend
       const orderRes = await axiosInstance.post('/payment/create-order', {
         amount: Number(amount),
-        userId: user._id,
-        userName: user.name || "Melo Warrior",
-        userEmail: user.email || "warrior@melobattle.com",
-        userPhone: "9999999999" // Cashfree requires a 10 digit number
+        userId: user._id
       });
 
-      const data = orderRes?.data || orderRes;
+      const data = orderRes?.data;
 
-      if (data.success && data.paymentSessionId) {
-        
-        // Step 2: Open Cashfree Checkout Popup
-        let checkoutOptions = {
-          paymentSessionId: data.paymentSessionId,
-          redirectTarget: "_modal", // Opens as a popup
-        };
-
-        cashfree.checkout(checkoutOptions).then(async (result) => {
-          if (result.error) {
-            toast.error("Payment cancelled or failed.");
-            setLoading(false);
-          }
-          
-          if (result.paymentDetails) {
-            // Step 3: Payment Success! Verify with Backend
-            toast.loading("Verifying transaction...", { id: "verify" });
-            
-            const verifyRes = await axiosInstance.post('/payment/verify', {
-              orderId: data.orderId,
-              userId: user._id
-            });
-
-            const verifyData = verifyRes?.data || verifyRes;
-
-            if (verifyData.success) {
-              // 🔥 CRITICAL: Update the global user state so the balance changes instantly
-              await refreshUser(); 
-
-              toast.success(`Successfully added ₹${amount} to your wallet!`, { id: "verify" });
-              
-              // Navigate back to wallet after a brief delay
-              setTimeout(() => {
-                navigate(-1);
-              }, 1500);
-            } else {
-              toast.error("Verification failed.", { id: "verify" });
-            }
-            setLoading(false);
-          }
-        });
-
-      } else {
+      // 🔥 CHANGE: Razorpay id → Instamojo paymentUrl
+      if (!data || !data.paymentUrl) {
         toast.error("Failed to initiate payment.");
         setLoading(false);
+        return;
       }
+
+      // 🔥 CHANGE: Redirect instead of Razorpay popup
+      window.location.href = data.paymentUrl;
+
     } catch (error) {
       console.error("Deposit error:", error);
       toast.error("Server error during deposit.");
+    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-[#F1F5F9] font-sans antialiased">
-      {/* Slim Professional Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-4">
         <button 
           onClick={() => navigate(-1)} 
@@ -122,7 +68,6 @@ const DepositPage = () => {
 
       <main className="p-4 max-w-md mx-auto space-y-4">
         
-        {/* Compact Balance Section */}
         <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-purple-50 p-2 rounded-lg text-purple-600">
@@ -139,7 +84,6 @@ const DepositPage = () => {
           </div>
         </div>
 
-        {/* Professional Small Input Box */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }} 
           animate={{ opacity: 1, scale: 1 }}
@@ -160,7 +104,6 @@ const DepositPage = () => {
             </div>
           </div>
 
-          {/* Compact Chips */}
           <div className="grid grid-cols-4 gap-2 mb-6">
             {quickAmounts.map((amt) => (
               <button
@@ -188,7 +131,7 @@ const DepositPage = () => {
 
             <button 
               type="submit"
-              disabled={loading || !amount || !cashfree}
+              disabled={loading || !amount}
               className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
@@ -202,7 +145,6 @@ const DepositPage = () => {
           </form>
         </motion.div>
 
-        {/* Subtle Branding */}
         <div className="text-center opacity-40">
            <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em]">Melo Battle Payments</p>
         </div>

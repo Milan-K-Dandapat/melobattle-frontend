@@ -11,7 +11,7 @@ import { PrivacyPolicy, Terms, RefundPolicy, Contact } from "../pages/LegalPages
 import WithdrawalPage from "../pages/wallet/WithdrawalPage"; 
 import DepositPage from "../pages/wallet/DepositPage"; 
 import WalletHistoryPage from "../pages/wallet/WalletHistoryPage"; 
-
+import PaymentSuccess from "../pages/Wallet/PaymentSuccess";
 // Contest Pages
 import MyContests from "../pages/contest/MyContests"; 
 import ContestDetails from "../pages/contest/ContestDetails";
@@ -33,6 +33,10 @@ const AppRoutes = () => {
 
   const routes = useRoutes([
     { path: "/login", element: <Login /> },
+    {
+  path: "/payment-success",
+  element: <PaymentSuccess />
+},
 
     // 🔥 PUBLIC LEGAL PAGES (Required for Payment Gateway Approval)
     { path: "/privacy-policy", element: <PrivacyPolicy /> },
