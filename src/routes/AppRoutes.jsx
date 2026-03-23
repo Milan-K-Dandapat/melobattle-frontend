@@ -11,7 +11,7 @@ import { PrivacyPolicy, Terms, RefundPolicy, Contact } from "../pages/LegalPages
 import WithdrawalPage from "../pages/wallet/WithdrawalPage"; 
 import DepositPage from "../pages/wallet/DepositPage"; 
 import WalletHistoryPage from "../pages/wallet/WalletHistoryPage"; 
-import PaymentSuccess from "../pages/Wallet/PaymentSuccess";
+import PaymentSuccess from "../pages/wallet/PaymentSuccess";
 // Contest Pages
 import MyContests from "../pages/contest/MyContests"; 
 import ContestDetails from "../pages/contest/ContestDetails";
