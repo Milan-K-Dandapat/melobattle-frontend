@@ -1,3 +1,4 @@
+import { io } from "socket.io-client";
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
@@ -46,6 +47,10 @@ const LiveCodingArena = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [testResults, setTestResults] = useState(null);
   const [compilerError, setCompilerError] = useState(false);
+  // 🔥 OPPONENT STATES
+const [opponent, setOpponent] = useState(null);
+const [opponentStatus, setOpponentStatus] = useState("Waiting...");
+const [opponentProgress, setOpponentProgress] = useState(0);
 
   // Timer & Analytics
   const [timeLeft, setTimeLeft] = useState("");
@@ -56,6 +61,7 @@ const LiveCodingArena = () => {
   // 🔥 STATE LOCKS FOR AUTO-SUBMIT: Prevents stale closures when timer hits 0
   const codeMapRef = useRef(codeMap);
   const languageRef = useRef(language);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     codeMapRef.current = codeMap;
@@ -136,10 +142,41 @@ const LiveCodingArena = () => {
     return () => clearInterval(timer);
   }, [contest]);
 
-  const handleEditorChange = (value) => {
-    setCodeMap(prev => ({ ...prev, [language]: value }));
-  };
+  useEffect(() => {
+  socketRef.current = io("http://localhost:5000");
 
+  socketRef.current.emit("join_battle", {
+    contestId: id,
+    userId: user?._id
+  });
+
+  socketRef.current.on("opponent_joined", (data) => {
+    setOpponent(data);
+  });
+
+  socketRef.current.on("opponent_status", (data) => {
+    setOpponentStatus(data.status);
+  });
+
+  socketRef.current.on("opponent_progress", (data) => {
+    setOpponentProgress(data.progress);
+  });
+
+  socketRef.current.on("opponent_submitted", () => {
+    toast("Opponent submitted 😳", { icon: "⚡" });
+  });
+
+  return () => socketRef.current.disconnect();
+}, [id, user]);
+
+const handleEditorChange = (value) => {
+  setCodeMap(prev => ({ ...prev, [language]: value }));
+
+  socketRef.current?.emit("typing", {
+    contestId: id,
+    status: "Typing..."
+  });
+};
   const handleRunCode = async () => {
     const currentLang = languageRef.current;
     const currentCode = codeMapRef.current[currentLang];
@@ -147,6 +184,10 @@ const LiveCodingArena = () => {
     if (!currentCode) return toast.error("Code cannot be empty");
     
     setIsCompiling(true);
+    socketRef.current?.emit("run_code", {
+  contestId: id,
+  status: "Running code..."
+});
     setActiveTab("output");
     setOutput("Compiling code securely in sandbox...");
     setCompilerError(false);
@@ -226,6 +267,10 @@ const LiveCodingArena = () => {
     }
     
     setIsSubmitting(true);
+    socketRef.current?.emit("submit_code", {
+  contestId: id,
+  status: "Submitted"
+});
     setActiveTab("results");
     setTestResults(null);
 
@@ -341,9 +386,38 @@ const LiveCodingArena = () => {
           </div>
         </div>
       </nav>
+<div className="px-6 py-3 bg-[#0A0F1E] border-b border-white/10 flex items-center justify-between gap-6">
+
+  {/* YOU */}
+  <div className="flex-1">
+    <div className="text-[10px] text-green-400 mb-1 font-bold">YOU</div>
+    <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+      <div
+        className="bg-green-500 h-full"
+        style={{
+          width: `${((testResults?.passedCount || 0) / (testResults?.totalCases || 1)) * 100}%`
+        }}
+      />
+    </div>
+  </div>
+
+  <div className="text-xs text-gray-400 font-bold">VS</div>
+
+  {/* ENEMY */}
+  <div className="flex-1">
+    <div className="text-[10px] text-red-400 mb-1 font-bold">ENEMY</div>
+    <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+      <div
+        className="bg-red-500 h-full"
+        style={{ width: `${opponentProgress}%` }}
+      />
+    </div>
+  </div>
+
+</div>
 
       {/* 🚀 SPLIT SCREEN LAYOUT */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+     <div className="flex-1 flex overflow-hidden">
         
         {/* 📜 LEFT PANE: PROBLEM & CONSOLE */}
         <div className="w-full lg:w-[45%] flex flex-col border-r border-white/10 bg-[#0A0F1E]">
@@ -448,54 +522,88 @@ const LiveCodingArena = () => {
         </div>
 
         {/* 💻 RIGHT PANE: MONACO EDITOR */}
-        <div className="w-full lg:w-[55%] flex flex-col bg-[#1E1E1E]">
-          {/* Editor Header / Language Selector */}
-          <div className="h-12 bg-[#252526] border-b border-[#333] flex items-center px-4 justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Environment:</span>
-              <select 
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="bg-[#333] text-white text-xs font-black px-3 py-1 rounded outline-none border-none cursor-pointer hover:bg-[#444] transition-colors"
-              >
-                {Object.entries(LANGUAGE_VERSIONS).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="text-[9px] text-slate-500 uppercase tracking-widest font-black flex items-center gap-1.5">
-               <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10B981]"></span> Sandbox Active
-            </div>
+        {/* 💻 RIGHT PANE */}
+<div className="w-full lg:w-[55%] flex">
+
+  {/* ✅ EDITOR SECTION */}
+  <div className="flex-1 flex flex-col bg-[#1E1E1E]">
+    
+    {/* Editor Header */}
+    <div className="h-12 bg-[#252526] border-b border-[#333] flex items-center px-4 justify-between">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          Environment:
+        </span>
+        <select 
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+          className="bg-[#333] text-white text-xs font-black px-3 py-1 rounded"
+        >
+          {Object.entries(LANGUAGE_VERSIONS).map(([key, label]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="text-[9px] text-slate-500 uppercase font-black">
+        ● Sandbox Active
+      </div>
+    </div>
+
+    {/* Editor */}
+    <div className="flex-1">
+      <Editor
+        height="100%"
+        theme="vs-dark"
+        language={MONACO_LANGUAGES[language]}
+        value={codeMap[language]}
+        onChange={handleEditorChange}
+      />
+    </div>
+  </div>
+
+  {/* ✅ OPPONENT PANEL */}
+  <div className="w-[220px] bg-[#050810] border-l border-white/10 p-4 flex flex-col justify-between">
+
+    <div>
+      <h3 className="text-xs text-purple-400 mb-3 font-bold uppercase">
+        Opponent
+      </h3>
+
+      {opponent ? (
+        <>
+          <div className="text-sm text-white font-semibold">
+            {opponent.name || "Enemy"}
           </div>
 
-          {/* Monaco Editor Container */}
-          <div className="flex-1 relative">
-            <Editor
-              height="100%"
-              theme="vs-dark"
-              language={MONACO_LANGUAGES[language]}
-              value={codeMap[language]}
-              onChange={handleEditorChange}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 15,
-                fontFamily: "JetBrains Mono, monospace",
-                padding: { top: 20 },
-                scrollBeyondLastLine: false,
-                smoothScrolling: true,
-                cursorBlinking: "smooth",
-                autoIndent: "full",
-                formatOnPaste: true,
-                suggestOnTriggerCharacters: true
-              }}
-              loading={
-                <div className="flex items-center justify-center h-full text-slate-500 font-black text-xs uppercase tracking-widest">
-                  Initializing Editor...
-                </div>
-              }
-            />
+          <div className="text-xs text-gray-400 mt-1">
+            {opponentStatus}
           </div>
+
+          <div className="mt-4">
+            <div className="text-[10px] text-gray-500 mb-1">Progress</div>
+            <div className="w-full bg-gray-800 h-2 rounded-full">
+              <div
+                className="bg-red-500 h-full"
+                style={{ width: `${opponentProgress}%` }}
+              />
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-xs text-gray-500">
+          Waiting for opponent...
         </div>
+      )}
+    </div>
+
+    <div className="text-[10px] text-red-400 animate-pulse">
+      ⚡ Live Battle
+    </div>
+
+  </div>
+
+</div>
 
       </div>
     </div>
