@@ -1,20 +1,24 @@
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Trophy, Users, Timer, ArrowLeft, ShieldCheck, 
-  Flame, ChevronRight, Info, AlertCircle, Zap, Swords, Clock, ShieldAlert, Share2,
-  Image as ImageIcon, Wallet, Target, BarChart3
-} from "lucide-react";
 import axiosInstance from "../../api/axios";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
+import { 
+  Trophy, Users, Timer, ArrowLeft, ShieldCheck, Flame, 
+  ChevronRight, Info, AlertCircle, Zap, Swords, Clock, 
+  ShieldAlert, Share2, Wallet, Target, BarChart3, 
+  Camera, RefreshCcw, Layout, CheckCircle2, AlertTriangle,
+  Lock, // <--- Add this icon
+  Image as ImageIcon 
+} from "lucide-react";
 
 const ContestDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   
+  // State definitions
   const [contest, setContest] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [joined, setJoined] = useState(false);
@@ -22,6 +26,11 @@ const ContestDetails = () => {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const actionLock = useRef(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [isChecked, setIsChecked] = useState(false);
+  const [loginUserId, setLoginUserId] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
   const particles = useMemo(() => {
     return Array.from({ length: 15 }).map((_, i) => ({
@@ -93,28 +102,43 @@ if (!contest?.isInstantBattle) {
 }
     
     // 🔥 ALWAYS go to Lobby if early.
-    if (now < startTime - 10000) {
+    if (!contest?.isInstantBattle && now < startTime - 2000) {
       toast("ENTERING PRE-BATTLE LOBBY", { icon: '⏳' });
       navigate(`/battle-lobby/${id}`);
     } else if (now >= startTime && now <= endTime) {
-      toast.success("ARENA LIVE: COMMENCING BATTLE!");
-      // 🔥 Check category if already live!
-      if (contest?.category === "LIVE CODING SOLVE") {
-        navigate(`/live-compiler/${id}`);
-      } else {
-        navigate(`/battle/${id}`);
-      }
-    } else if (!contest?.isInstantBattle && now > endTime) {
+
+  // 🔥 ADD THIS SAFETY BUFFER (IMPORTANT)
+  if (!contest?.isInstantBattle && now < startTime + 3000) {
+    navigate(`/battle-lobby/${id}`);
+    return;
+  }
+
+  toast.success("ARENA LIVE: COMMENCING BATTLE!");
+
+  if (contest?.category === "LIVE CODING SOLVE") {
+    navigate(`/live-compiler/${id}`);
+  } 
+  else if (contest?.category === "QUIZ") {
+    navigate(`/quiz/${id}`);
+  }
+  else {
+    navigate(`/battle/${id}`);
+  }
+    } else if (!contest?.isInstantBattle && now > endTime && joined) {
   toast.error("BATTLE TERMINATED: SESSION CLOSED");
   navigate(`/contest-leaderboard/${id}`);
 }
      else {
-      if (contest?.category === "LIVE CODING SOLVE") {
-        navigate(`/live-compiler/${id}`);
-      } else {
-        navigate(`/battle/${id}`);
-      }
-    }
+  if (contest?.category === "LIVE CODING SOLVE") {
+    navigate(`/live-compiler/${id}`);
+  } 
+  else if (contest?.category === "QUIZ") {
+    navigate(`/quiz/${id}`);
+  }
+  else {
+    navigate(`/battle/${id}`);
+  }
+}
     return;
   }
 
@@ -155,11 +179,14 @@ if (responseData?.isJoined === true) {
           {
             _id: user?._id,
             username: user?.username || user?.name,
-            // 🔥 FIX: Mapping XP from user context to avoid showing 0 XP on join
             points: user?.rating || user?.points || user?.xp || 0 
           }
         ]
   }));
+
+  // ✅ ADD THESE 2 LINES
+  setJoining(false);
+  actionLock.current = false;
 
   toast.success("WARRIOR REGISTERED! ⚔️", {
     style: { background: '#10b981', color: '#fff', fontWeight: 'bold' }
@@ -167,7 +194,6 @@ if (responseData?.isJoined === true) {
 
   return;
 }
-
 } catch (err) {
 
   // 🔥 Ignore cancelled requests
@@ -220,7 +246,129 @@ if (responseData?.isJoined === true) {
     console.error(err);
   }
 };
+if (showInstructions) {
+  return (
+    <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center p-4 font-sans">
+      {/* Main Exam Container */}
+      <div className="w-full max-w-4xl bg-white shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-sm border border-gray-300 overflow-hidden">
+        
+        {/* CBT Header Bar */}
+        <div className="bg-[#1e40af] text-white px-6 py-4 flex justify-between items-center border-b-4 border-yellow-500">
+          <div className="flex items-center gap-3">
+            <div className="bg-white p-1 rounded-sm">
+               <ShieldCheck className="w-6 h-6 text-[#1e40af]" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold leading-tight uppercase tracking-wide">Candidate Instructions</h1>
+              <p className="text-[10px] text-blue-100 opacity-80 uppercase tracking-widest">Melo Examination Services • Session 2026</p>
+            </div>
+          </div>
+          <div className="text-right hidden sm:block">
+            <p className="text-[10px] uppercase text-blue-200">System Time</p>
+            <p className="text-sm font-mono font-bold">{new Date().toLocaleTimeString()}</p>
+          </div>
+        </div>
 
+        {/* Examination Body */}
+        <div className="p-8">
+          <div className="flex items-center gap-2 mb-6 pb-2 border-b border-gray-200">
+            <Info className="w-5 h-5 text-gray-500" />
+            <h2 className="text-xl font-bold text-gray-800">General Instructions & Guidelines</h2>
+          </div>
+
+          <div className="space-y-6 text-gray-700 leading-relaxed overflow-y-auto max-h-[50vh] pr-2 custom-scrollbar">
+            <section>
+              <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
+                <span className="w-6 h-6 bg-gray-800 text-white text-[10px] flex items-center justify-center rounded-full">01</span>
+                Hardware & Environment
+              </h3>
+              <p className="pl-8 text-sm">
+                Candidates must ensure their web camera is active throughout the duration of the examination. 
+                <span className="font-bold text-red-600"> Obstruction of the camera view </span> will result in automatic termination of the session.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
+                <span className="w-6 h-6 bg-gray-800 text-white text-[10px] flex items-center justify-center rounded-full">02</span>
+                Browser Restrictions
+              </h3>
+              <p className="pl-8 text-sm">
+                This assessment is conducted in a locked environment. Tab switching, window resizing, or navigating away from the exam interface is 
+                <span className="font-bold underline"> strictly prohibited</span>. The system logs all navigation events.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
+                <span className="w-6 h-6 bg-gray-800 text-white text-[10px] flex items-center justify-center rounded-full">03</span>
+                Session Continuity
+              </h3>
+              <p className="pl-8 text-sm">
+                Do not attempt to refresh (<RefreshCcw className="inline w-3 h-3" />) the browser. In case of a connectivity failure, wait for the system to attempt auto-reconnection. Manual refreshing may invalidate your response data.
+              </p>
+            </section>
+
+            <section className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-md">
+              <div className="flex gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                <p className="text-xs text-amber-800">
+                  <strong>Warning:</strong> Any detection of secondary devices, unauthorized software, or AI assistants will be flagged by the proctoring engine for immediate disqualification.
+                </p>
+              </div>
+            </section>
+          </div>
+
+          {/* Acknowledgement Footer */}
+          <div className="mt-10 pt-6 border-t border-gray-200">
+            <label className="flex items-start gap-4 cursor-pointer group">
+              <div className="relative flex items-center">
+                <input
+                  type="checkbox"
+                  className="peer h-5 w-5 cursor-pointer appearance-none border border-gray-400 rounded-sm checked:bg-blue-600 checked:border-blue-600 transition-all"
+                  checked={isChecked}
+                  onChange={() => setIsChecked(!isChecked)}
+                />
+                <CheckCircle2 className="absolute w-5 h-5 text-white scale-0 peer-checked:scale-75 transition-transform pointer-events-none" />
+              </div>
+              <span className="text-sm font-medium text-gray-800 select-none group-hover:text-blue-700 transition-colors">
+                I have read and understood the instructions. I agree that I am the authorized candidate and will abide by the rules stated above.
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Footer Navigation */}
+        <div className="bg-gray-50 px-8 py-5 flex items-center justify-between border-t border-gray-300">
+          <div className="text-[11px] text-gray-500 font-medium italic">
+            IP Address Logged: 103.21.XX.XX
+          </div>
+          <button
+            disabled={!isChecked}
+            onClick={() => {
+              setShowInstructions(false);
+              const now = new Date().getTime();
+              const startTime = new Date(contest?.startTime).getTime();
+              if (contest?.startTime && now < startTime) {
+                navigate(`/battle-lobby/${id}`);
+                return;
+              }
+              setShowLogin(true);
+            }}
+            className={`flex items-center gap-2 px-10 py-3 rounded-sm font-bold text-sm transition-all shadow-md ${
+              isChecked
+                ? "bg-emerald-600 text-white hover:bg-emerald-700 active:translate-y-0.5"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            PROCEED TO EXAM
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
   return (
     <AnimatePresence mode="wait">
       {loading ? (
@@ -407,7 +555,18 @@ if (responseData?.isJoined === true) {
             <motion.button
               whileTap={!joining && !(isArenaFull && !joined) ? { scale: 0.96 } : {}}
               onClick={() => {
-  if (joining) return;
+  console.log("BUTTON CLICKED 🔥", contest);
+
+// ❌ REMOVE THIS LINE
+// if (joining) return;
+
+if (contest?.mode === "exam" && !joined) {
+  console.log("EXAM MODE DETECTED");
+  setShowInstructions(true); // 👉 OPEN INSTRUCTION PAGE
+  return;
+}
+
+  console.log("NORMAL JOIN FLOW");
   handleAction();
 }}
               disabled={joining || (isArenaFull && !joined)}
@@ -434,6 +593,122 @@ if (responseData?.isJoined === true) {
               )}
             </motion.button>
           </div>
+{showLogin && (
+  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[999] p-4 font-sans">
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      className="bg-white w-full max-w-md rounded-sm border border-gray-300 shadow-2xl overflow-hidden"
+    >
+      {/* Login Header - CBT Professional Style */}
+      <div className="bg-[#1e40af] px-6 py-5 border-b-4 border-yellow-500 flex items-center gap-3">
+        <div className="bg-white/10 p-2 rounded-sm shadow-inner">
+          <ShieldAlert className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h2 className="text-white font-bold uppercase tracking-wider text-xs">Secure Authentication</h2>
+          <p className="text-[10px] text-blue-100 opacity-70 uppercase tracking-tight">Identity verification required to proceed</p>
+        </div>
+      </div>
+
+      <div className="p-8">
+        {/* Assessment Context */}
+        <div className="mb-8 text-center">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Assessment ID</p>
+          <code className="text-blue-700 font-mono bg-blue-50 px-4 py-1.5 rounded border border-blue-100 text-xs">
+            {id?.slice(-12).toUpperCase() || "BATTLE-ARENA-2026"}
+          </code>
+        </div>
+
+        <div className="space-y-5">
+          {/* User ID Field */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-gray-600 uppercase ml-1 tracking-wide">Candidate User ID</label>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors">
+                <Users className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                placeholder="Enter unique ID"
+                value={loginUserId}
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-sm focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-sm font-medium placeholder:text-gray-400"
+                onChange={(e) => setLoginUserId(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Password Field */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-gray-600 uppercase ml-1 tracking-wide">Exam Passcode</label>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors">
+                <Lock className="w-4 h-4" />
+              </div>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={loginPassword}
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-sm focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-sm font-medium placeholder:text-gray-400"
+                onChange={(e) => setLoginPassword(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <button
+          onClick={async () => {
+            try {
+              await axiosInstance.post("/exam-auth/login", {
+                userId: loginUserId,
+                password: loginPassword,
+                contestId: id
+              });
+              // ✅ JOIN CONTEST AFTER LOGIN
+await axiosInstance.post(`/contest/${id}/join`);
+              setShowLogin(false);
+              setJoined(true);
+              handleAction();
+            } catch (err) {
+              toast.error("Authentication Failed: Invalid Credentials");
+            }
+          }}
+          className="w-full mt-8 bg-[#1e40af] hover:bg-blue-800 text-white font-bold py-4 rounded-sm shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 uppercase text-[11px] tracking-[0.25em]"
+        >
+          Verify & Initialize
+          <ChevronRight className="w-4 h-4" />
+        </button>
+
+        {/* Security Warning */}
+        <div className="mt-8 flex items-center justify-center gap-2 opacity-40">
+          <ShieldCheck className="w-3.5 h-3.5 text-gray-500" />
+          <span className="text-[9px] text-gray-500 font-bold uppercase tracking-[0.1em]">
+            Secure Session Monitoring Active
+          </span>
+        </div>
+      </div>
+
+      {/* Footer Info with Melo Branding */}
+      <div className="bg-gray-100 px-8 py-4 border-t border-gray-200 flex justify-between items-center">
+        <div className="flex flex-col">
+          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter leading-none mb-1">Session: 2026-X</span>
+          <div className="flex items-center gap-1">
+             <span className="text-[8px] text-gray-400 font-bold uppercase italic">Powered by</span>
+             <span className="text-[10px] text-indigo-600 font-black tracking-tight uppercase">Melo</span>
+          </div>
+        </div>
+        
+        <button 
+          onClick={() => setShowLogin(false)}
+          className="text-[10px] font-bold text-gray-400 uppercase hover:text-red-500 transition-colors border-b border-transparent hover:border-red-500 pb-0.5"
+        >
+          Cancel Request
+        </button>
+      </div>
+    </motion.div>
+  </div>
+)}
         </motion.div>
       )}
     </AnimatePresence>

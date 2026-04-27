@@ -14,6 +14,18 @@ import axiosInstance from "../../api/axios";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 
+const getSafeTime = (time) => {
+  try {
+    if (!time) return 0;
+
+    const d = new Date(time);
+    const t = d.getTime();
+
+    return isNaN(t) ? 0 : t;
+  } catch {
+    return 0;
+  }
+};
 
 // 🔥 MASSIVE CATEGORY DICTIONARY (FAIL-SAFE DEFAULTS)
 const CATEGORY_MAP = {
@@ -65,7 +77,11 @@ const AdminPanel = () => {
   const [deployedBattleName, setDeployedBattleName] = useState("");
 
   const [editingBattle, setEditingBattle] = useState(null);
+  const [examUsers, setExamUsers] = useState([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showExamCredentials, setShowExamCredentials] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showUserDropdownEdit, setShowUserDropdownEdit] = useState(false);
 
   const [contestData, setContestData] = useState({
     title: "",
@@ -85,7 +101,8 @@ const AdminPanel = () => {
     mediaFiles: [],
     useRandomQuestions: false,
   randomQuestionCount: 10,
-   isInstantBattle: false
+   isInstantBattle: false,
+   mode: "battle", // 🔥 ADD THIS
   });
 
   const handleJsonUpload = (e, mode = "create") => {
@@ -162,12 +179,17 @@ e.target.value = "";
         safeGet("/categories")
       ]);
 
-      // 1. STATS EXTRACTION
-      const statsRes = statsResponse?.data || statsResponse;
-      if (statsRes?.success || statsRes?.stats) {
-        setStats(statsRes.stats || statsRes);
-      }
+// 🔥 FINAL CORRECT PARSING
+// ✅ FIXED PARSING
+const statsRes = statsResponse || {};
 
+const statsData = statsRes.data?.stats || {};
+
+setStats({
+  totalUsers: statsData.totalUsers || 0,
+  totalContests: statsData.totalContests || 0,
+  netProfit: statsData.netProfit || 0
+});
       // 2. BATTLES EXTRACTION
       let battleArray = [];
       const rawBattles = battleResponse?.data || battleResponse;
@@ -207,14 +229,42 @@ e.target.value = "";
     refreshAdminData();
   }, [refreshAdminData]);
 
+useEffect(() => {
+  if (!contestData._id) return;
+
+  const fetchUsers = async () => {
+    try {
+      const res = await axiosInstance.get(`/exam-auth/${contestData._id}`);
+      setExamUsers(res?.users || res?.data?.users || []);
+    } catch (err) {
+      setExamUsers([]); // 🔥 important fallback
+    }
+  };
+
+  fetchUsers();
+}, [contestData._id]);
+useEffect(() => {
+  if (!editingBattle?._id) return;
+
+  axiosInstance
+    .get(`/exam-auth/${editingBattle._id}`)
+    .then(res => {
+      setExamUsers(res?.users || res?.data?.users || []);
+    })
+    .catch(() => {});
+}, [editingBattle?._id]);
+
   useEffect(() => {
 
-  socketRef.current = io("https://melobattle-backend1.onrender.com", {
-  transports: ["websocket"],
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 2000
-});
+  socketRef.current = io(
+  import.meta.env.VITE_API_URL.replace("/api/v1", ""),
+  {
+    transports: ["websocket"],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 2000
+  }
+);
 
   const socket = socketRef.current;
 
@@ -303,7 +353,10 @@ e.target.value = "";
   const handleEditInitiate = (battle) => {
     setEditingBattle({
       ...battle,
-      startTime: battle.startTime ? new Date(battle.startTime).toISOString().slice(0, 16) : "",
+      startTime:
+  battle.startTime && !isNaN(new Date(battle.startTime).getTime())
+    ? new Date(battle.startTime).toISOString().slice(0, 16)
+    : "",
       commissionPercentage: battle.commissionPercentage || 20,
       winnerPercentage: battle.winnerPercentage || 60,
       isSponsored: battle.isSponsored || false,
@@ -311,7 +364,8 @@ e.target.value = "";
       duration: battle.duration || 15,
       questions: battle.questions || [],
       category: battle.category || Object.keys(categoryData)[0] || "General",
-      subCategory: battle.subCategory || "General"
+      subCategory: battle.subCategory || "General",
+      mode: battle.mode || "battle",
     });
     setIsEditModalOpen(true);
   };
@@ -336,9 +390,11 @@ e.target.value = "";
 if (editingBattle.startTime) {
   const start = new Date(editingBattle.startTime);
 
-  if (!isNaN(start.getTime())) {
-    payload.startTime = start.toISOString();
+  if (!start || isNaN(start.getTime())) {
+    return toast.error("Invalid edit date ❌");
   }
+
+  payload.startTime = start.toISOString();
 }
 
       const response = await axiosInstance.put(`/contest/${editingBattle._id}`, payload);
@@ -377,6 +433,7 @@ if (!contestData.useRandomQuestions && contestData.questions.length === 0) {
       const { mediaFiles, ...safeContestData } = contestData;
       
 const payload = {
+  mode: contestData.mode || "battle",
   ...safeContestData,
   isInstantBattle: contestData.isInstantBattle,
   useRandomQuestions: contestData.useRandomQuestions,
@@ -396,7 +453,17 @@ if (!contestData.isInstantBattle) {
 
 // add start time only if provided
 if (!contestData.isInstantBattle && contestData.startTime) {
-  payload.startTime = new Date(contestData.startTime).toISOString();
+  const start = new Date(contestData.startTime);
+
+  if (isNaN(start.getTime())) {
+    return toast.error("Invalid date format ❌");
+  }
+
+  // 🔥 FIX TIMEZONE BEFORE SENDING
+const localDate = new Date(contestData.startTime);
+
+// convert to ISO (UTC)
+payload.startTime = localDate.toISOString();
 }
 
       const response = await axiosInstance.post("/contest/create", payload);
@@ -411,6 +478,19 @@ if (!contestData.isInstantBattle && contestData.startTime) {
       toast.success("BATTLE DEPLOYED!", { icon: '🚀', style: { background: '#050810', color: '#fff', border: '1px solid #9333ea' }});
 
       const newBattle = res?.contest || res?.data?.contest || res || {};
+      setContestData(prev => ({
+  ...prev,
+  _id: newBattle._id // ✅ store contest id
+}));
+// 🔥 IMMEDIATELY FETCH USERS AFTER CREATION
+if (newBattle._id) {
+  try {
+    const res = await axiosInstance.get(`/exam-auth/${newBattle._id}`);
+    setExamUsers(res?.users || res?.data?.users || []);
+  } catch (err) {
+    console.log("No users yet");
+  }
+}
       const mergedBattle = { 
         ...contestData, 
         ...newBattle, 
@@ -420,6 +500,7 @@ if (!contestData.isInstantBattle && contestData.startTime) {
       };
       
       setBattles(prev => [mergedBattle, ...prev]);
+      setExamUsers([]);
 
       setContestData({
         title: "", category: Object.keys(categoryData)[0] || "GK", subCategory: categoryData[Object.keys(categoryData)[0]]?.[0] || "Current Affairs", type: "MULTIPLAYER", entryFee: 0, maxParticipants: 2, commissionPercentage: 20, winnerPercentage: 60, isSponsored: false, sponsorPrize: 0, startTime: "", duration: 15, bannerImage: "", questions: [], mediaFiles: []
@@ -533,6 +614,7 @@ if (!contestData.isInstantBattle && contestData.startTime) {
   bannerImage: "",
   questions: [],
   mediaFiles: [],
+  _id: "",
   useRandomQuestions: false,
   randomQuestionCount: 10,
   isInstantBattle: false
@@ -565,52 +647,62 @@ if (jsonInputRef.current) {
 
   const nowTime = Date.now();
 
-  const activeBattles = battles.filter(b => {
+const activeBattles = battles.filter(b => {
+  if (!b) return false;
 
-  // 🔥 Instant battles are always active
-  if (b.isInstantBattle) return true;
+  const joined = Number(b.joinedCount) || 0;
+  const max = Number(b.maxParticipants) || 1;
 
-  if (!b.startTime) return false;
-
-  const startTs = new Date(b.startTime).getTime();
-
-  if (isNaN(startTs)) return false;
-
-  const endTime = startTs + (b.duration || 15) * 60000;
-
-  return nowTime <= endTime;
-
-});
-  
- const closedBattles = battles.filter(b => {
-
-  // 🔥 Never close instant battles
-  if (b.isInstantBattle) return false;
-
-  if (["COMPLETED", "PROCESSING", "ARCHIVED"].includes(b.status)) return true;
-
-  if (b.startTime) {
-    const startTs = new Date(b.startTime).getTime();
-
-    if (!isNaN(startTs)) {
-      const endTime = startTs + (b.duration || 15) * 60000;
-
-      if (nowTime > endTime) return true;
-    }
+  // 🔥 RULE 1: If it's an Instant/Always Open Battle
+  if (b.isInstantBattle) {
+    // Only Active if spots are remaining
+    return joined < max;
   }
 
-  return false;
+  // RULE 2: Scheduled Battles
+  const isFinishedStatus = ["COMPLETED", "ARCHIVED"].includes(b.status);
+  const ts = getSafeTime(b?.startTime);
+  const endTime = ts ? ts + ((b.duration || 15) * 60000) : 0;
+  const isTimeOver = ts !== 0 && Date.now() > endTime;
 
+  // Active ONLY if not full, not finished, and time hasn't run out
+  return !isFinishedStatus && !isTimeOver && joined < max;
+});
+
+const closedBattles = battles.filter(b => {
+  if (!b) return false;
+
+  const joined = Number(b.joinedCount) || 0;
+  const max = Number(b.maxParticipants) || 1;
+
+  // 🔥 RULE 1: If it's an Instant/Always Open Battle
+  if (b.isInstantBattle) {
+    // Only Closed if it hits the limit
+    return joined >= max;
+  }
+
+  // RULE 2: Scheduled Battles
+  const isFinishedStatus = ["COMPLETED", "ARCHIVED"].includes(b.status);
+  const ts = getSafeTime(b.startTime);
+  const endTime = ts ? ts + ((b.duration || 15) * 60000) : 0;
+  const isTimeOver = ts !== 0 && Date.now() > endTime;
+
+  // Closed if full OR time is over OR status is completed
+  return isFinishedStatus || isTimeOver || joined >= max;
+}).sort((a, b) => {
+  const tsA = getSafeTime(a?.startTime);
+  const tsB = getSafeTime(b?.startTime);
+  return tsB - tsA;
 }).sort((a, b) => {
 
   // 🔥 instant battles always stay on top
   if (a.isInstantBattle && !b.isInstantBattle) return -1;
   if (!a.isInstantBattle && b.isInstantBattle) return 1;
 
-  const dateA = new Date(a.startTime).getTime();
-  const dateB = new Date(b.startTime).getTime();
+const tsA = getSafeTime(a?.startTime);
+const tsB = getSafeTime(b?.startTime);
 
-  return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+  return tsB - tsA;
 
 });
   const displayedBattles = (signalFilter === "active" ? activeBattles : closedBattles).filter(b => {
@@ -855,6 +947,148 @@ if (jsonInputRef.current) {
   </div>
 )}
 
+{/* 🔥 MODE SELECTOR (ONLY FOR LIVE CODING) */}
+{contestData.category === "LIVE CODING SOLVE" && (
+  <div className="p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] flex items-center justify-between shadow-inner mt-4">
+    
+    <div>
+      <p className="text-xs font-black uppercase tracking-widest text-red-400">
+        Coding Mode
+      </p>
+      <p className="text-[9px] text-slate-500 uppercase">
+        Select Battle or Proctored Exam
+      </p>
+    </div>
+
+    <select
+      value={contestData.mode}
+      onChange={(e) =>
+        setContestData({
+          ...contestData,
+          mode: e.target.value
+        })
+      }
+      className="bg-black/40 border border-white/10 px-4 py-2 rounded-xl text-xs"
+    >
+      <option value="battle">Battle Mode 🆚</option>
+      <option value="exam">Exam Mode 🎯</option>
+    </select>
+  </div>
+)}
+{contestData.category === "LIVE CODING SOLVE" && 
+ contestData.mode === "exam" && (
+  <div className="mt-6 p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-[2rem]">
+
+    <button
+  onClick={() => setShowExamCredentials(prev => !prev)}
+  className="w-full flex justify-between items-center text-yellow-400 text-xs font-bold mb-4 uppercase tracking-widest"
+>
+  🔐 Exam User Credentials
+  <span>{showExamCredentials ? "▲" : "▼"}</span>
+</button>
+{showExamCredentials && (
+  <>
+    {/* USER ID */}
+    <input
+      placeholder="Enter User ID (e.g. student01)"
+      value={contestData.examUserId || ""}
+      onChange={(e) =>
+        setContestData({
+          ...contestData,
+          examUserId: e.target.value
+        })
+      }
+      className="w-full mb-3 p-3 bg-black/40 border border-white/10 text-white rounded-xl text-sm"
+    />
+
+    {/* PASSWORD */}
+    <input
+      placeholder="Enter Password"
+      type="password"
+      value={contestData.examPassword || ""}
+      onChange={(e) =>
+        setContestData({
+          ...contestData,
+          examPassword: e.target.value
+        })
+      }
+      className="w-full mb-3 p-3 bg-black/40 border border-white/10 text-white rounded-xl text-sm"
+    />
+
+    {/* CREATE BUTTON */}
+    <button
+    
+   onClick={async () => {
+
+  // ✅ STEP 2: check inputs
+  if (!contestData.examUserId || !contestData.examPassword) {
+    return toast.error("Enter ID & Password");
+  }
+
+  try {
+if (!contestData._id) {
+  return toast.error("Create contest first 🚀");
+}
+
+await axiosInstance.post("/exam-auth/create", {
+  userId: contestData.examUserId,
+  password: contestData.examPassword,
+  contestId: contestData._id // 🔥 MAIN FIX
+});
+
+// 🔥 ALWAYS FETCH UPDATED LIST
+const res = await axiosInstance.get(`/exam-auth/${contestData._id}`);
+setExamUsers(res?.users || res?.data?.users || []);
+
+    toast.success("Exam User Created ✅");
+setContestData(prev => ({
+  ...prev,
+  examUserId: "",
+  examPassword: ""
+}));
+  } catch (err) {
+    toast.error("Failed ❌");
+  }
+}}
+      className="w-full bg-yellow-600 py-3 rounded-xl text-white font-bold"
+    >
+      Create User
+    </button>
+
+{examUsers.length > 0 && (
+  <div className="mt-4">
+
+    {/* 🔥 DROPDOWN BUTTON */}
+    <button
+      onClick={() => setShowUserDropdown(prev => !prev)}
+      className="w-full flex justify-between items-center bg-black/40 border border-white/10 p-3 rounded-xl text-green-400 font-bold text-xs"
+    >
+      Created Users ({examUsers.length})
+      <span>{showUserDropdown ? "▲" : "▼"}</span>
+    </button>
+
+    {/* 🔥 DROPDOWN LIST */}
+    {showUserDropdown && (
+      <div className="mt-2 bg-black/50 border border-white/10 rounded-xl p-3 max-h-40 overflow-y-auto">
+        {examUsers.map((u, i) => (
+          <div
+            key={i}
+            className="flex justify-between text-xs text-white py-1 border-b border-white/5"
+          >
+            <span>{u.userId}</span>
+            <span className="text-slate-500">••••••</span>
+          </div>
+        ))}
+      </div>
+    )}
+
+  </div>
+)}
+  </>
+)}
+
+  </div>
+)}
                       {/* 🔥 ALWAYS OPEN BATTLE */}
 
 <div className="p-6 bg-indigo-600/10 border border-indigo-500/20 rounded-[2rem] flex items-center justify-between shadow-inner group mt-4">
@@ -954,7 +1188,11 @@ const progress = b.isInstantBattle
                               <div className="max-w-[280px] space-y-2">
                                 <div className="flex justify-between text-[8px] font-black text-slate-500 uppercase">
                                   <span>Pool: ₹{b.prizePool}</span>
-                                  <span>{joined}/{b.maxParticipants} Joined</span>
+                                  <span>
+  {b.isInstantBattle
+    ? `${joined} Joined`
+    : `${joined}/${b.maxParticipants} Joined`}
+</span>
                                 </div>
                                 <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
                                   <div className={`h-full rounded-full ${signalFilter === "active" ? "bg-purple-600" : "bg-emerald-600"}`} style={{ width: `${progress}%` }} />
@@ -1169,7 +1407,10 @@ const progress = b.isInstantBattle
             <motion.div initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }} className="bg-[#0A0F1E] border border-white/10 rounded-[3.5rem] p-10 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar pb-20">
               <div className="flex justify-between items-center mb-10">
                 <h3 className="text-2xl font-black uppercase italic tracking-tighter">Reconfigure Protocol</h3>
-                <button onClick={() => setIsEditModalOpen(false)} className="p-3 bg-white/5 rounded-full hover:text-red-500 transition-colors"><X size={20}/></button>
+                <button onClick={() => {
+  setIsEditModalOpen(false);
+  setShowUserDropdown(false);
+}}className="p-3 bg-white/5 rounded-full hover:text-red-500 transition-colors"><X size={20}/></button>
               </div>
               <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1194,8 +1435,172 @@ const progress = b.isInstantBattle
                   </div>
                 </div>
 
-                <AdminInput label="Protocol Designation" value={editingBattle.title} onChange={(v) => setEditingBattle({...editingBattle, title: v})} />
-                
+                <AdminInput label="Protocol Designation"  value={editingBattle.title} onChange={(v) => setEditingBattle({...editingBattle, title: v})} />
+                {editingBattle.category === "LIVE CODING SOLVE" && (
+                  
+  <AdminSelect
+    label="Coding Mode"
+    value={editingBattle.mode}
+    options={[
+      { v: "battle", l: "Battle Mode 🆚" },
+      { v: "exam", l: "Exam Mode 🎯" }
+    ]}
+    onChange={(v) =>
+      setEditingBattle({ ...editingBattle, mode: v })
+    }
+  />
+)}
+{editingBattle.category === "LIVE CODING SOLVE" && 
+ editingBattle.mode === "exam" && (
+
+  <div className="mt-6 p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-[2rem]">
+
+    <h3 className="text-yellow-400 text-xs font-bold mb-4 uppercase tracking-widest">
+      🔐 Exam User Credentials
+    </h3>
+
+    <input
+      placeholder="Enter User ID"
+      value={editingBattle.examUserId || ""}
+      onChange={(e) =>
+        setEditingBattle({
+          ...editingBattle,
+          examUserId: e.target.value
+        })
+      }
+      className="w-full mb-3 p-3 bg-black/40 border border-white/10 text-white rounded-xl"
+    />
+
+    <input
+      placeholder="Enter Password"
+      type="password"
+      value={editingBattle.examPassword || ""}
+      onChange={(e) =>
+        setEditingBattle({
+          ...editingBattle,
+          examPassword: e.target.value
+        })
+      }
+      className="w-full mb-3 p-3 bg-black/40 border border-white/10 text-white rounded-xl"
+    />
+
+    <button
+onClick={async () => {
+  if (!editingBattle._id) {
+    return toast.error("Invalid Contest");
+  }
+
+  if (!editingBattle.examUserId || !editingBattle.examPassword) {
+    return toast.error("Enter ID & Password");
+  }
+
+  try {
+    // ✅ CREATE USER
+    await axiosInstance.post("/exam-auth/create", {
+      userId: editingBattle.examUserId,
+      password: editingBattle.examPassword,
+      contestId: editingBattle._id
+    });
+
+    // ✅ FETCH UPDATED USERS LIST (IMPORTANT)
+    const res = await axiosInstance.get(`/exam-auth/${editingBattle._id}`);
+
+    setExamUsers(res?.users || res?.data?.users || []);
+
+    toast.success("User Created ✅");
+
+    // clear fields
+    setEditingBattle({
+      ...editingBattle,
+      examUserId: "",
+      examPassword: ""
+    });
+
+  } catch (err) {
+    toast.error("Failed ❌");
+  }
+}}
+      className="w-full bg-yellow-600 py-3 rounded-xl text-white font-bold"
+    >
+      Create User
+    </button>
+{examUsers.length > 0 && (
+  <div className="mt-4">
+
+    {/* BUTTON */}
+    <button
+      onClick={() => setShowUserDropdownEdit(prev => !prev)}
+      className="w-full flex justify-between items-center bg-black/40 border border-white/10 p-3 rounded-xl text-green-400 font-bold text-xs"
+    >
+      Created Users ({examUsers.length})
+      <span>{showUserDropdownEdit ? "▲" : "▼"}</span>
+    </button>
+
+    {/* DROPDOWN */}
+    {showUserDropdownEdit && (
+      <div className="mt-2 bg-black/50 border border-white/10 rounded-xl p-3 max-h-40 overflow-y-auto">
+{examUsers.map((u, i) => (
+  <div
+    key={i}
+    className="flex items-center justify-between bg-black/40 border border-white/10 rounded-xl p-3 mb-2 hover:bg-black/60 transition-all"
+  >
+    {/* LEFT SIDE */}
+    <div className="flex flex-col">
+      <span className="text-sm font-bold text-white">
+        {u.userId}
+      </span>
+
+      {/* 🔥 PASSWORD VISIBLE TO ADMIN */}
+      <span className="text-[10px] text-yellow-400 font-mono mt-1">
+        {u.plainPassword || "No Password"}
+      </span>
+    </div>
+
+    {/* RIGHT SIDE ACTIONS */}
+    <div className="flex items-center gap-2">
+
+      {/* COPY BUTTON */}
+      <button
+        onClick={() => {
+          navigator.clipboard.writeText(`${u.userId} / ${u.plainPassword ? u.plainPassword : "••••••"}`);
+          toast.success("Copied ✅");
+        }}
+        className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-all"
+      >
+        <Copy size={14} />
+      </button>
+
+      {/* DELETE BUTTON */}
+      <button
+        onClick={async () => {
+          if (!window.confirm("Delete this user?")) return;
+
+          try {
+            await axiosInstance.delete(`/exam-auth/${u._id}`);
+
+            // 🔥 update UI instantly
+            setExamUsers(prev => prev.filter(user => user._id !== u._id));
+
+            toast.success("User Deleted ❌");
+          } catch (err) {
+            toast.error("Delete Failed");
+          }
+        }}
+        className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500 hover:text-white transition-all"
+      >
+        <Trash2 size={14} />
+      </button>
+
+    </div>
+  </div>
+))}
+      </div>
+    )}
+
+  </div>
+)}
+  </div>
+)}
                 <div className="grid grid-cols-2 gap-6">
                   <AdminSelect label="Main Domain" value={editingBattle.category} options={categoryOptions} onChange={(v) => setEditingBattle({...editingBattle, category: v, subCategory: categoryData[v]?.[0] || "General"})} />
                   <AdminSelect label="Sub Domain" value={editingBattle.subCategory} options={editSubCategoryOptions} onChange={(v) => setEditingBattle({...editingBattle, subCategory: v})} />

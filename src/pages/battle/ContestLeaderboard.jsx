@@ -31,14 +31,12 @@ const ContestLeaderboard = () => {
          */
         const standingsRes = await axiosInstance.get(`/contest/${id}/leaderboard`);
         console.log("Leaderboard API response:", standingsRes.data);
-        const data = Array.isArray(standingsRes?.data)
-          ? standingsRes.data
-          : standingsRes?.data?.data || [];
+        const data = standingsRes?.data?.data || [];
         
         // Ensure data is sorted by rank if provided, otherwise by score
-        const sortedData = Array.isArray(data) 
-          ? [...data].sort((a, b) => (a.rank || 999) - (b.rank || 999)) 
-          : [];
+        const sortedData = Array.isArray(data)
+  ? [...data].sort((a, b) => (b.score || 0) - (a.score || 0))
+  : [];
           
         setStandings(sortedData);
       } catch (err) {
@@ -292,7 +290,7 @@ const StandingRow = ({ player }) => {
 
       <div className="text-right shrink-0 ml-2">
         <p className="text-[10px] sm:text-xs md:text-sm font-black italic tracking-tighter text-white">
-          {(player.score || 0).toLocaleString()} XP
+          {Math.floor(player.score || 0).toLocaleString()} XP
         </p>
       </div>
     </motion.div>

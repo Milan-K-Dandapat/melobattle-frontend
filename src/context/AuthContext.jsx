@@ -122,8 +122,15 @@ export const AuthProvider = ({ children }) => {
 }, [updateGlobalUser]);
 
   useEffect(() => {
+  const token = localStorage.getItem("token");
+
+  // 🔥 ONLY fetch if user is not already set
+  if (token && !user) {
     fetchUserProfile();
-  }, [fetchUserProfile]);
+  } else {
+    setLoading(false); // 🔥 IMPORTANT
+  }
+}, [fetchUserProfile, user]);
 
   const login = (userData, token) => {
     if (token) localStorage.setItem("token", token);

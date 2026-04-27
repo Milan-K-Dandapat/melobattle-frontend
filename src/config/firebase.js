@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD4KS0Gm-K8FLpJWq6v3SnU7ce3lwpuaRg",
@@ -13,6 +13,15 @@ const firebaseConfig = {
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// 🔥 CRITICAL FIX (DO NOT SKIP)
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log("✅ Firebase persistence set");
+  })
+  .catch((error) => {
+    console.error("❌ Persistence error:", error);
+  });
 
 // Configure Google Provider
 export const googleProvider = new GoogleAuthProvider();

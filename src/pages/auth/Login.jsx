@@ -24,22 +24,13 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth(); 
 
-  useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const code = queryParams.get("ref");
-    if (code) {
-      setRefCode(code);
-      console.log("🎯 Referral Detected:", code);
-    }
-
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-  }, []);
+useEffect(() => {
+  const queryParams = new URLSearchParams(window.location.search);
+  const code = queryParams.get("ref");
+  if (code) {
+    setRefCode(code);
+  }
+}, []);
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
@@ -53,23 +44,24 @@ const Login = () => {
     }
   };
 
-  const handleLogin = async () => {
-    setLoading(true); 
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const idToken = await result.user.getIdToken();
-      const response = await googleLogin(idToken, promoCode);
+ const handleLogin = async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
 
-      if (response.success) {
-        login(response.data); 
-        navigate("/intro"); 
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const idToken = await result.user.getIdToken();
+
+    const response = await googleLogin(idToken, promoCode);
+if (response.success && response.data?.token) {
+  login(response.data.user, response.data.token);
+  navigate("/intro");
+} else {
+  console.error("❌ Invalid response:", response);
+}
+
+  } catch (error) {
+    console.error("Login Error:", error);
+  }
+};
 
   return (
     /* Changed bg-black to bg-transparent to ensure ParticlesBackground is visible */

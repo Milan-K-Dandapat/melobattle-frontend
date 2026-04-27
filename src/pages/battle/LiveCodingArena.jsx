@@ -1,4 +1,5 @@
 import { io } from "socket.io-client";
+import socket from "../../socket";
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
@@ -11,19 +12,23 @@ import {
 import axiosInstance from "../../api/axios";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
+import Proctoring from "../../components/proctoring/Proctoring";
+
 
 const LANGUAGE_VERSIONS = {
   c: "C (GCC 9.2.0)",
   cpp: "C++ (GCC 9.2.0)",
   java: "Java (OpenJDK 13.0.1)",
-  python: "Python (3.8.1)"
+  python: "Python (3.8.1)",
+  javascript: "JavaScript (Node.js 18)" // ✅ added
 };
 
 const MONACO_LANGUAGES = {
   c: "c",
   cpp: "cpp",
   java: "java",
-  python: "python"
+  python: "python",
+  javascript: "javascript" // ✅ added
 };
 
 const LiveCodingArena = () => {
@@ -32,7 +37,8 @@ const LiveCodingArena = () => {
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
-  const [contest, setContest] = useState(null);
+const [contest, setContest] = useState(null);
+const mode = contest?.mode ?? "battle";
   const [question, setQuestion] = useState(null);
   
   // Editor States
@@ -47,8 +53,43 @@ const LiveCodingArena = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [testResults, setTestResults] = useState(null);
   const [compilerError, setCompilerError] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   // 🔥 OPPONENT STATES
 const [opponent, setOpponent] = useState(null);
+// 🔐 EXAM MODE STATES
+const [warningsCount, setWarningsCount] = useState(0);
+useEffect(() => {
+  if (mode === "exam" && warningsCount >= 5) {
+    toast.error("Disqualified due to malpractice 🚫");
+
+    setTimeout(() => {
+      navigate("/quiz-result", {
+        state: {
+          score: 0,
+          totalQuestions: 1,
+          correctAnswers: 0,
+          accuracy: 0,
+          contestId: id,
+          timeTaken: "0s",
+          timestamp: new Date().toISOString(),
+          disqualified: true   // 🔥 optional flag
+        },
+        replace: true
+      });
+    }, 1500);
+  }
+}, [warningsCount]);
+const [lastScreenshot, setLastScreenshot] = useState(null);
+const savedExamUser = JSON.parse(localStorage.getItem("examUser"));
+const examUserId = savedExamUser?.userId || null;
+
+const [showExamLogin, setShowExamLogin] = useState(false); // keep
+useEffect(() => {
+  setShowExamLogin(false);
+}, []);
+const [examId, setExamId] = useState("");
+const [examPassword, setExamPassword] = useState("");
+const [isAuthLoading, setIsAuthLoading] = useState(false);
 const [opponentStatus, setOpponentStatus] = useState("Waiting...");
 const [opponentProgress, setOpponentProgress] = useState(0);
 
@@ -71,17 +112,28 @@ const [opponentProgress, setOpponentProgress] = useState(0);
   useEffect(() => {
     const fetchArenaData = async () => {
       try {
-        const response = await axiosInstance.get(`/contest/${id}`);
-        const data = response?.data?.data || response?.data?.contest || response?.data || response;
-        
+       const res = await axiosInstance.get(`/contest/${id}`);
+console.log("🔥 FULL API DATA:", res);
+
+const data = res?.data || res;
         if (data) {
+          console.log("🔥 QUESTIONS:", data.questions);
           setContest(data);
+
+          // 🔥 AUTO LOGIN (REMOVE SECOND LOGIN)
+if (data.mode === "exam") {
+  setShowExamLogin(false);
+}
           
           if (data.isCompletedByUser) {
-            toast.error("BATTLE ARCHIVED: ALREADY PARTICIPATED", { icon: '🛡️' });
-            navigate(`/contest-leaderboard/${id}`);
-            return;
-          }
+  toast.error("BATTLE ARCHIVED: ALREADY PARTICIPATED", { icon: '🛡️' });
+
+  navigate(`/contest-leaderboard/${id}`, {
+    replace: true   // 🔥 IMPORTANT FIX
+  });
+
+  return;
+}
 
           if (data.questions && data.questions.length > 0) {
             const q = data.questions[0];
@@ -90,9 +142,12 @@ const [opponentProgress, setOpponentProgress] = useState(0);
               c: q.starterCode?.c || "#include <stdio.h>\n\nint main() {\n    // Write C code here\n    return 0;\n}",
               cpp: q.starterCode?.cpp || "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write C++ code here\n    return 0;\n}",
               java: q.starterCode?.java || "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Write Java code here\n    }\n}",
-              python: q.starterCode?.python || "# Write Python code here\n"
+              python: q.starterCode?.python || "# Write Python code here\n",
+              javascript: q.starterCode?.javascript || "// Write JavaScript code here\n"
             });
-            startTimeRef.current = Date.now(); 
+            if (!startTimeRef.current) {
+  startTimeRef.current = Date.now(); // ✅ only set once
+}
           } else {
             toast.error("No problem statement found in this arena.");
           }
@@ -109,17 +164,20 @@ const [opponentProgress, setOpponentProgress] = useState(0);
   }, [id, navigate]);
 
   useEffect(() => {
-    if (!contest?.startTime || !contest?.duration) return;
+  if (!contest?.startTime || !contest?.duration) return;
+
+// 🔥 ADD THIS LINE
+  if (mode === "exam" && showExamLogin) return;
 
     const timer = setInterval(() => {
       if (isTimerTriggered.current) return;
 
-      const now = new Date().getTime();
-      const start = new Date(contest.startTime).getTime();
-      const end = start + (contest.duration * 60 * 1000);
-      const remaining = end - now;
+     const now = Date.now();
+const start = startTimeRef.current; // ✅ FIXED
+const end = start + (contest.duration * 60 * 1000);
+const remaining = end - now;
 
-      if (remaining <= 0) {
+     if (remaining <= 0 && !(mode === "exam" && showExamLogin)) {
         isTimerTriggered.current = true;
         setTimeLeft("00:00:00");
         setIsTimeUp(true);
@@ -128,9 +186,14 @@ const [opponentProgress, setOpponentProgress] = useState(0);
         
         // Wait a tiny bit for UI to update before heavy network call
         setTimeout(() => {
-          handleSubmit(true); 
-        }, 500);
-
+  if (mode === "exam") {
+    navigate(`/contest-leaderboard/${id}`, {
+  replace: true
+});
+  } else {
+    handleSubmit(true);
+  }
+}, 500);
       } else {
         const h = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const m = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
@@ -140,10 +203,13 @@ const [opponentProgress, setOpponentProgress] = useState(0);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [contest]);
+  }, [contest, mode, showExamLogin]);
 
-  useEffect(() => {
-  socketRef.current = io("http://localhost:5000");
+useEffect(() => {
+  if (!contest) return; // ✅ wait for contest
+  if (mode === "exam") return; // ✅ disable in exam
+
+  socketRef.current = io(import.meta.env.VITE_API_URL.replace("/api/v1", ""));
 
   socketRef.current.emit("join_battle", {
     contestId: id,
@@ -166,16 +232,18 @@ const [opponentProgress, setOpponentProgress] = useState(0);
     toast("Opponent submitted 😳", { icon: "⚡" });
   });
 
-  return () => socketRef.current.disconnect();
-}, [id, user]);
+  return () => socketRef.current?.disconnect();
+}, [id, user, contest]);
 
 const handleEditorChange = (value) => {
   setCodeMap(prev => ({ ...prev, [language]: value }));
 
+ if (mode === "battle") {
   socketRef.current?.emit("typing", {
     contestId: id,
     status: "Typing..."
   });
+}
 };
   const handleRunCode = async () => {
     const currentLang = languageRef.current;
@@ -184,10 +252,12 @@ const handleEditorChange = (value) => {
     if (!currentCode) return toast.error("Code cannot be empty");
     
     setIsCompiling(true);
-    socketRef.current?.emit("run_code", {
-  contestId: id,
-  status: "Running code..."
-});
+if (mode === "battle") {
+  socketRef.current?.emit("run_code", {
+    contestId: id,
+    status: "Running code..."
+  });
+}
     setActiveTab("output");
     setOutput("Compiling code securely in sandbox...");
     setCompilerError(false);
@@ -221,7 +291,10 @@ const handleEditorChange = (value) => {
    * 🔥 PARTIAL XP ROUTING PROTOCOL
    * Calculates score based on exactly how many test cases passed.
    */
-  const routeToResults = (passedCount, totalCases, allPassed) => {
+  
+  const routeToResults = async (passedCount, totalCases, allPassed) => {
+    localStorage.setItem("userCode", codeMapRef.current[languageRef.current] || "");
+    localStorage.setItem("userLanguage", languageRef.current);
     const totalTimeTaken = Math.floor((Date.now() - startTimeRef.current) / 1000);
     const safeTotalCases = totalCases > 0 ? totalCases : 1;
     const accuracy = Math.round((passedCount / safeTotalCases) * 100);
@@ -238,6 +311,27 @@ const handleEditorChange = (value) => {
     }
 
     const finalScore = baseScore + timeBonus;
+if (mode === "exam") {
+  await axiosInstance.post("/contest/submit", {
+    contestId: id,
+    score: finalScore,
+    accuracy,
+    timeTaken: totalTimeTaken,
+    examUserId: examUserId || undefined  // ✅ include this if backend supports it
+  });
+} else {
+  await axiosInstance.post("/contest/submit", {
+    contestId: id,
+    score: finalScore,
+    accuracy,
+    timeTaken: totalTimeTaken,
+  });
+}
+// 🔥 ADD THIS EXACTLY HERE (after API call)
+socketRef.current?.emit("PLAYER_FINISHED", {
+  contestId: id,
+  userId: user?._id
+});
 
     navigate("/quiz-result", {
       state: {
@@ -252,7 +346,40 @@ const handleEditorChange = (value) => {
       replace: true 
     });
   };
+const handleCheckCases = async () => {
+  const currentLang = languageRef.current;
+  const currentCode = codeMapRef.current[currentLang];
 
+  if (!currentCode) return toast.error("Code cannot be empty");
+
+  setIsSubmitting(true);
+  setActiveTab("results");
+  setTestResults(null);
+
+  try {
+    const response = await axiosInstance.post("/compiler/submit", {
+      questionId: question._id,
+      language: currentLang,
+      sourceCode: currentCode
+    });
+
+    const res = response?.data || response;
+
+    if (res?.success) {
+      setTestResults(res);
+
+      if (res.passedCount > 0) {
+        toast.success(`${res.passedCount}/${res.totalCases} Test Cases Passed`);
+      } else {
+        toast.error("0 Test Cases Passed");
+      }
+    }
+  } catch (err) {
+    toast.error("Check Failed");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   const handleSubmit = async (isAutoSubmit = false) => {
     const currentLang = languageRef.current;
     const currentCode = codeMapRef.current[currentLang];
@@ -267,10 +394,12 @@ const handleEditorChange = (value) => {
     }
     
     setIsSubmitting(true);
-    socketRef.current?.emit("submit_code", {
-  contestId: id,
-  status: "Submitted"
-});
+if (mode === "battle") {
+  socketRef.current?.emit("submit_code", {
+    contestId: id,
+    status: "Submitted"
+  });
+}
     setActiveTab("results");
     setTestResults(null);
 
@@ -286,15 +415,14 @@ const handleEditorChange = (value) => {
       if (res?.success) {
         setTestResults(res);
 
-        if (res?.allPassed) {
-          toast.success("ALL TEST CASES PASSED! Outstanding!", { icon: '🏆', style: { background: '#050810', color: '#10B981', border: '1px solid #10B981' } });
-          
-          // Fully Correct: Wait 2.5s then redirect to result page
-          setTimeout(() => {
-            routeToResults(res.passedCount, res.totalCases, true);
-          }, 2500);
+if (res?.allPassed) {
+  toast.success("ALL TEST CASES PASSED! Outstanding!", {
+    icon: '🏆'
+  });
 
-        } else {
+  await routeToResults(res.passedCount, res.totalCases, true);
+  return;
+} else {
           // Partially Correct or Failed
           if (res?.passedCount > 0) {
             toast.success(`${res?.passedCount}/${res?.totalCases} Test Cases Passed. Partial XP Awarded.`, { icon: '🎯' });
@@ -308,6 +436,12 @@ const handleEditorChange = (value) => {
                routeToResults(res.passedCount, res.totalCases, false);
             }, 3000);
           }
+          // 🔥 MANUAL SUBMIT EVEN IF FAILED
+if (!isAutoSubmit) {
+  setTimeout(() => {
+    routeToResults(res.passedCount, res.totalCases, false);
+  }, 1500);
+}
         }
       } else {
         toast.error(res?.message || "Submission failed processing.");
@@ -316,7 +450,14 @@ const handleEditorChange = (value) => {
         }
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || err?.message || "Submission Error.");
+  if (err?.response?.status === 429) {
+    toast.error("⚠️ Server busy, try again...");
+  } else if (err?.response?.status === 403) {
+    toast.error("❌ Not allowed to submit");
+  } else {
+    toast.error("Submission Error");
+  }
+
       if (isAutoSubmit === true) {
         setTimeout(() => routeToResults(0, 1, false), 2000);
       }
@@ -324,12 +465,46 @@ const handleEditorChange = (value) => {
       setIsSubmitting(false);
     }
   };
+  const handleExamLogin = async () => {
+  try {
+    setIsAuthLoading(true);
 
+    const res = await axiosInstance.post("/exam-auth/login", {
+      userId: examId,
+      password: examPassword,
+      contestId: id
+    });
+
+   if (res.data.success) {
+
+  // 🔥 SAVE LOGIN
+  localStorage.setItem("examUser", JSON.stringify({
+    userId: examId,
+    contestId: id
+  }));
+
+  toast.success("Access Granted ✅");
+  setShowExamLogin(false);
+}
+
+  } catch (err) {
+    toast.error(err?.response?.data?.message || "Access Denied ❌");
+  } finally {
+    setIsAuthLoading(false);
+  }
+};
   const handleEndEarly = () => {
-     if (window.confirm("Abort Live Coding Session? You will receive Partial/Zero XP.")) {
-         routeToResults(0, 1, false);
-     }
-  };
+  if (window.confirm("Abort Live Coding Session?")) {
+    if (mode === "exam") {
+      navigate(`/contest-leaderboard/${id}`, {
+  replace: true
+});
+    } else {
+      routeToResults(0, 1, false);
+    }
+  }
+};
+
 
   if (loading) {
     return (
@@ -342,7 +517,39 @@ const handleEditorChange = (value) => {
 
   return (
     <div className="min-h-screen bg-[#050810] text-white flex flex-col font-sans overflow-hidden h-screen">
-      {/* 🚀 TOP NAVIGATION BAR */}
+     {showConfirm && (
+  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[999]">
+    <div className="bg-[#0A0F1E] border border-white/10 rounded-xl p-6 w-[320px] text-center">
+      
+      <h2 className="text-white font-bold mb-3">Confirm Submit</h2>
+      
+      <p className="text-xs text-gray-400 mb-5">
+        You may not have passed all test cases.<br />
+        Are you sure you want to submit?
+      </p>
+
+      <div className="flex gap-3 justify-center">
+        <button
+          onClick={() => setShowConfirm(false)}
+          className="px-4 py-2 bg-gray-700 rounded text-white text-xs"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={() => {
+            setShowConfirm(false);
+            handleSubmit(false);
+          }}
+          className="px-4 py-2 bg-green-600 rounded text-white text-xs"
+        >
+          Submit Anyway
+        </button>
+      </div>
+
+    </div>
+  </div>
+)} {/* 🚀 TOP NAVIGATION BAR */}
       <nav className="h-16 border-b border-white/10 bg-[#0A0F1E] flex items-center justify-between px-6 shrink-0">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-white/5 rounded-lg transition-colors text-slate-400 hover:text-white">
@@ -351,7 +558,9 @@ const handleEditorChange = (value) => {
           <div className="flex items-center gap-2">
             <Code2 className="text-purple-500" size={20} />
             <h1 className="font-black text-sm uppercase tracking-widest text-slate-200 hidden md:block">
-              {contest?.title || "Live Coding Arena"}
+             {mode === "exam" 
+  ? "AI Proctored Exam 🎯" 
+  : (contest?.title || "Live Coding Arena")}
             </h1>
           </div>
         </div>
@@ -377,7 +586,14 @@ const handleEditorChange = (value) => {
               {isCompiling ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} className="text-emerald-400" />} Run Code
             </button>
             <button 
-              onClick={() => handleSubmit(false)} 
+  onClick={handleCheckCases}
+  disabled={isCompiling || isSubmitting || isTimeUp}
+  className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-500 text-white px-5 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+>
+  Check
+</button>
+            <button 
+ onClick={() => setShowConfirm(true)}
               disabled={isCompiling || isSubmitting || isTimeUp}
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] active:scale-95 disabled:opacity-50"
             >
@@ -386,7 +602,8 @@ const handleEditorChange = (value) => {
           </div>
         </div>
       </nav>
-<div className="px-6 py-3 bg-[#0A0F1E] border-b border-white/10 flex items-center justify-between gap-6">
+{mode === "battle" && (
+  <div className="px-6 py-3 bg-[#0A0F1E] border-b border-white/10 flex items-center justify-between gap-6">
 
   {/* YOU */}
   <div className="flex-1">
@@ -415,6 +632,7 @@ const handleEditorChange = (value) => {
   </div>
 
 </div>
+)}
 
       {/* 🚀 SPLIT SCREEN LAYOUT */}
      <div className="flex-1 flex overflow-hidden">
@@ -556,13 +774,14 @@ const handleEditorChange = (value) => {
         height="100%"
         theme="vs-dark"
         language={MONACO_LANGUAGES[language]}
-        value={codeMap[language]}
+        value={codeMap[language] || ""}
         onChange={handleEditorChange}
       />
     </div>
   </div>
 
   {/* ✅ OPPONENT PANEL */}
+ {mode === "battle" && (
   <div className="w-[220px] bg-[#050810] border-l border-white/10 p-4 flex flex-col justify-between">
 
     <div>
@@ -602,6 +821,23 @@ const handleEditorChange = (value) => {
     </div>
 
   </div>
+  )}
+  {/* 🎯 EXAM MODE PROCTORING PANEL */}
+{mode === "exam" && (
+  <div className="w-[260px] bg-[#050810] border-l border-white/10 p-4">
+
+   <Proctoring 
+  setWarningsCount={setWarningsCount}
+  setLastScreenshot={setLastScreenshot}
+  examEnded={isTimeUp}   // 🔥 ADD THIS
+/>
+
+    <div className="mt-4 text-xs text-red-400 font-bold">
+      Warnings: {warningsCount}
+    </div>
+
+  </div>
+)}
 
 </div>
 

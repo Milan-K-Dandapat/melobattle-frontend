@@ -6,6 +6,9 @@ import axios from "axios";
  */
 
 const pendingRequests = new Map(); // 🔥 prevents duplicate requests
+const getRequestKey = (config) => {
+  return `${config.method}_${config.url}`;
+};
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -34,11 +37,11 @@ axiosInstance.interceptors.request.use(
     }
 
     // 🔥 Prevent duplicate simultaneous requests
-    const requestKey = `${config.method}_${config.url}_${JSON.stringify(config.data || {})}`;
+    const requestKey = getRequestKey(config);
 
-    if (pendingRequests.has(requestKey)) {
-      pendingRequests.get(requestKey).abort();
-    }
+if (pendingRequests.has(requestKey)) {
+  return config; // ✅ ignore duplicate instead of cancel
+}
 
     const controller = new AbortController();
     config.signal = controller.signal;
@@ -69,8 +72,8 @@ axiosInstance.interceptors.response.use(
   (response) => {
 
     // 🔥 Remove request from pending list
-    const requestKey = `${response.config.method}_${response.config.url}`;
-    pendingRequests.delete(requestKey);
+   const requestKey = getRequestKey(response.config);
+pendingRequests.delete(requestKey);
 
     return response.data;
 
@@ -80,13 +83,13 @@ async (error) => {
   const { response, config } = error;
 
   // 🔥 FIX: Ignore cancelled requests completely
-  if (error.code === "ERR_CANCELED" || error.name === "CanceledError") {
-
-    const requestKey = `${config?.method}_${config?.url}`;
+if (error.code === "ERR_CANCELED" || error.name === "CanceledError") {
+  if (config) {
+    const requestKey = getRequestKey(config);
     pendingRequests.delete(requestKey);
-
-    return Promise.resolve(); // do NOT propagate error
   }
+  return Promise.reject(error);
+}
 
     // 🔥 HANDLE 429: Rate Limit Protection
     if (response?.status === 429) {

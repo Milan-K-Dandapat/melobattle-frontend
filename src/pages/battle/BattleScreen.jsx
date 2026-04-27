@@ -25,9 +25,11 @@ const BattleScreen = () => {
   const [isSyncing, setIsSyncing] = useState(true);
   const [shake, setShake] = useState(false);
   const [isInstantBattle, setIsInstantBattle] = useState(false);
+  const hasFetched = useRef(false);
 
   // Time Tracking for Analytics
   const startTimeRef = useRef(Date.now());
+  
 
   /**
    * ⚡ HAPTIC ENGINE
@@ -37,58 +39,62 @@ const BattleScreen = () => {
     type === "ERROR" ? window.navigator.vibrate([100, 50, 100]) : window.navigator.vibrate(40);
   };
 
-  // 1. ARENA INITIALIZATION (Manual JSON Sync Integrated)
-  useEffect(() => {
-    const startBattle = async () => {
-      try {
-        setIsSyncing(true);
-        // 🔥 TARGET SYNC: Fetching questions stored directly in the Contest document
-        const response = await axiosInstance.get(`/contest/battle/${id}`);
-        
-        // Robust extraction for the updated { questions, duration, title, isCompletedByUser } object
-        const result = response?.data?.data || response?.data || response;
-        
-        // 🚨 SECURITY GUARD: Block access if user already played
-        if (result?.isCompletedByUser) {
-          toast.error("BATTLE ARCHIVED: ALREADY PARTICIPATED", { icon: '🛡️' });
-          navigate(`/contest-leaderboard/${id}`);
-          return;
-        }
+// 1. ARENA INITIALIZATION (FINAL FIXED)
+useEffect(() => {
+  if (!id || hasFetched.current) return;
 
-if (result?.questions && result.questions.length > 0) {
+  hasFetched.current = true;
 
-  setQuestions(result.questions);
+  const startBattle = async () => {
+    try {
+      setIsSyncing(true);
 
-  setTimeLeft(result.questions[0]?.time || 10);
+      const response = await axiosInstance.get(`/contest/battle/${id}`);
 
-  // 🔥 ADMIN TOTAL TIMER
-  const adminDuration = result.duration || 15;
-  setTotalTimeLeft(adminDuration * 60);
+      const result = response?.data;
 
-  // 🔥 INSTANT BATTLE SUPPORT
-  if (result?.isInstantBattle) {
-  setIsInstantBattle(true);   // 🔥 IMPORTANT
-  toast.success("INSTANT BATTLE STARTED", { icon: '⚡' });
-} else {
-    toast.success("ARENA SYNCED", { icon: '🛡️' });
-  }
+// 🔥 HANDLE BOTH STRUCTURES
+const data = result?.data || result;
 
+if (!data) {
+  throw new Error("Invalid server response");
+}
 
-        } else {
-          throw new Error("Question matrix empty. Check manual JSON upload.");
-        }
-      } catch (err) {
-        console.error("🔥 Battle Sync Failure:", err);
-        toast.error(err.response?.data?.message || "Arena Sync Failed. Retiring to dashboard.");
-        navigate('/dashboard');
-      } finally {
-        setIsSyncing(false);
+      if (data?.isCompletedByUser) {
+        toast.error("Already Played");
+        navigate(`/contest-leaderboard/${id}`);
+        return;
       }
-    };
-    
-    if (id) startBattle();
-  }, [id, navigate]);
 
+     const questionsArray = data?.questions || [];
+
+if (questionsArray.length === 0) {
+  throw new Error("No questions found");
+}
+
+setQuestions(questionsArray);
+setTimeLeft(Number(questionsArray[0]?.time) || 10);
+
+
+      // 🔥 SAFE TOTAL TIMER (NO DEPENDENCY ON startTime)
+const adminDuration = data.duration || 15;
+setTotalTimeLeft(adminDuration * 60);
+
+      setIsInstantBattle(data.isInstantBattle || false);
+
+    } catch (err) {
+      console.error("🔥 ERROR:", err);
+
+      toast.error("Battle failed");
+      navigate("/dashboard");
+
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  startBattle();
+}, [id]);
   // 2. PRECISION CHRONOMETER (10-Second Question Timer)
   useEffect(() => {
     if (timeLeft > 0 && !isGameOver && questions.length > 0 && selectedOption === null) {
@@ -183,9 +189,12 @@ setSelectedOption(null);
   };
 
   if (isSyncing) return <BattleLoader />;
-  if (questions.length === 0) return null;
+  if (!questions || questions.length === 0) {
+  return <BattleLoader />;
+}
 
-  const currentQ = questions[currentIndex];
+  const currentQ = questions[currentIndex] || {};
+  console.log("🔥 CURRENT QUESTION:", currentQ);
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
   return (
@@ -289,7 +298,7 @@ setSelectedOption(null);
             className="w-full max-w-2xl text-center flex-1 flex flex-col justify-center"
           >
             <h2 className="text-lg sm:text-xl md:text-3xl font-black mb-4 sm:mb-6 md:mb-12 leading-[1.2] md:leading-[1.1] uppercase italic tracking-tighter px-2 md:px-4 text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400">
-              {currentQ?.text}
+              {currentQ?.text || currentQ?.question || currentQ?.title || "Loading question..."}
             </h2>
 
             <div className="grid grid-cols-1 gap-2.5 sm:gap-3 md:gap-4 w-full max-w-md mx-auto px-1">

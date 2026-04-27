@@ -165,10 +165,16 @@ const handleContestFinalized = () => {
   fetchDashboardData();
 };
 
-  socket.off("NEW_CONTEST_DEPLOYED").on("NEW_CONTEST_DEPLOYED", handleNewContest);
+socket.off("NEW_CONTEST_DEPLOYED").on("NEW_CONTEST_DEPLOYED", handleNewContest);
   socket.off("PLAYER_JOINED_UPDATE").on("PLAYER_JOINED_UPDATE", handlePlayerUpdate);
   socket.off("CONTEST_FINALIZED").on("CONTEST_FINALIZED", handleContestFinalized);
   socket.off("BATTLE_STARTED").on("BATTLE_STARTED", handleBattleStarted);
+  
+  // 🔥 FIX 3: REFRESH WHEN ANYONE FINISHES (Syncs "View Standings" state immediately)
+  socket.off("PLAYER_FINISHED").on("PLAYER_FINISHED", () => {
+    console.log("⚡ Player finished signal received. Refreshing arena state...");
+    fetchDashboardData();
+  });
 }
 
 return () => {
@@ -178,6 +184,7 @@ return () => {
     socket.off("PLAYER_JOINED_UPDATE");
     socket.off("CONTEST_FINALIZED");
     socket.off("BATTLE_STARTED");
+    socket.off("PLAYER_FINISHED"); // 🧹 Cleanup
   }
 
   window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -476,30 +483,47 @@ if (!c.isInstantBattle) {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 pb-6 md:pb-20">
                 {loadingContests ? (
-                  <div className="col-span-1 md:col-span-2 text-center py-12 md:py-20 animate-pulse text-slate-400 font-bold uppercase text-[10px] md:text-xs tracking-widest">Gathering live battles...</div>
-                ) : filteredContests.length > 0 ? (
-                  filteredContests?.map((c) => (
-                    <BattleCard
-  key={c._id} 
-  id={c._id} 
-  navigate={navigate} 
-  title={c.title}
-  prize={`₹${c.prizePool}`} 
-  entry={c.entryFee === 0 ? "FREE" : `₹${c.entryFee}`} 
-  spots={`${c.joinedCount}/${c.maxParticipants}`}
-  isJoined={c.isJoined}
-  isCompletedByUser={c.isCompletedByUser} 
-  bannerImage={c.bannerImage}
-  startTime={c.startTime} 
-  duration={c.duration} 
-  category={c.category} 
-  subCategory={c.subCategory} 
-  isFilling={c.joinedCount > ((c.maxParticipants || 1) * 0.8)}
-  battleCode={c.battleCode}
-  isInstantBattle={c.isInstantBattle}   // ✅ ADD THIS LINE
-/>
-                  ))
-                ) : (
+  <div className="col-span-1 md:col-span-2 text-center py-12 md:py-20 animate-pulse text-slate-400 font-bold uppercase text-[10px] md:text-xs tracking-widest">Gathering live battles...</div>
+) : filteredContests.length > 0 ? (
+filteredContests?.map((c) => {
+  const myId = user?._id?.toString() || user?.id?.toString() || user?.user?._id?.toString();
+  
+  // 1️⃣ Check if you are in the completed list (Strict)
+  const amICompleted = Array.isArray(c.completedParticipants) && 
+      c.completedParticipants.some(p => (p?._id?.toString() || p?.toString() || p) === myId);
+
+  // 2️⃣ Check if you have joined (Strict)
+  const hasJoined = Array.isArray(c.participants) 
+    ? c.participants.some(p => (p?._id?.toString() || p?.toString() || p) === myId)
+    : c.isJoined;
+
+  // 3️⃣ Check if contest is physically full (Only for non-instant)
+  const isFull = !c.isInstantBattle && c.joinedCount >= c.maxParticipants;
+
+  return (
+    <BattleCard
+      key={`${c._id}-${amICompleted}-${c.joinedCount}`} 
+      id={c._id} 
+      navigate={navigate} 
+      title={c.title}
+      prize={`₹${c.prizePool}`} 
+      entry={c.entryFee === 0 ? "FREE" : `₹${c.entryFee}`} 
+      spots={`${c.joinedCount}/${c.maxParticipants}`}
+      isJoined={hasJoined}
+      isCompletedByUser={amICompleted} 
+      bannerImage={c.bannerImage}
+      startTime={c.startTime} 
+      duration={c.duration} 
+      category={c.category} 
+      subCategory={c.subCategory} 
+      isFilling={c.joinedCount > ((c.maxParticipants || 1) * 0.8)}
+      battleCode={c.battleCode}
+      isInstantBattle={c.isInstantBattle}
+      forceClosed={isFull || c.status === "ARCHIVED"} // ✅ Ensure this is passed
+    />
+  );
+})
+) : (
                   <div className="col-span-1 md:col-span-2 bg-white rounded-3xl md:rounded-[2.5rem] p-10 md:p-16 text-center border-2 border-dashed border-slate-200 text-slate-400 font-black uppercase text-[9px] md:text-[10px] tracking-widest">
                     No active battles match your search or category. Try another!
                   </div>
@@ -639,7 +663,7 @@ const StatCard = ({ icon, label, value, subValue, color }) => {
   );
 };
 
-const BattleCard = memo(({ id, navigate, title, prize, entry, spots, startTime, isFilling, category, subCategory, isJoined, isCompletedByUser, bannerImage, duration, battleCode, isInstantBattle }) => {
+const BattleCard = memo(({ id, navigate, title, prize, entry, spots, startTime, isFilling, category, subCategory, isJoined, isCompletedByUser, bannerImage, duration, battleCode, isInstantBattle, forceClosed }) => {
   const [timeLeft, setTimeLeft] = useState("");
   const [isUrgent, setIsUrgent] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
@@ -834,29 +858,23 @@ if (isInstantBattle) {
         </div>
       </div>
 
-      <button 
-        onClick={handleActionClick}
-        className={`relative z-10 w-full py-3 md:py-4 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1.5 md:gap-2 ${
-  isCompletedByUser || isClosed
-    ? "bg-slate-900 text-slate-400 border border-white/5 hover:bg-black shadow-xl"
+<button 
+  onClick={handleActionClick}
+  className={`relative z-10 w-full py-3 md:py-4 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1.5 md:gap-2 ${
+    // 🔥 RULE: Completed status must override everything else
+    (isCompletedByUser || isClosed)
+      ? "bg-slate-900 text-slate-400 border border-white/5 hover:bg-black shadow-xl"
     : isJoined 
       ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-100"
-      : isInstantBattle
-        ? "bg-red-600 text-white animate-pulse shadow-red-200 hover:bg-red-700"
-        : isUrgent
-          ? "bg-red-600 text-white animate-pulse shadow-red-200"
-          : "bg-purple-600 text-white hover:bg-purple-700 shadow-purple-200"
-}`}>
-        {isCompletedByUser || isClosed
-  ? <>View Standings <BarChart3 className="w-3.5 h-3.5 md:w-4 md:h-4"/></>
-  : isJoined 
-    ? "Continue to Arena"
-    : isInstantBattle
-      ? <>JOIN LIVE NOW <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4"/></>
-      : isUrgent
-        ? <>JOIN LIVE NOW <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4"/></>
-        : "Enter Arena"}
-      </button>
+    : "bg-purple-600 text-white hover:bg-purple-700"
+  }`}
+>
+  {(isCompletedByUser || isClosed)
+    ? <>View Standings <BarChart3 className="w-3.5 h-3.5 md:w-4 md:h-4"/></>
+    : isJoined 
+      ? "Continue to Arena" 
+      : "Enter Arena"}
+</button>
     </motion.div>
   );
 });

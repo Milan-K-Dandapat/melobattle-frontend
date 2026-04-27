@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import socket from "../../socket";
+import jsPDF from "jspdf";
 import getUserBadge from "../../utils/getUserBadge";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -14,6 +15,137 @@ import axiosInstance from "../../api/axios";
 
 
 const QuizResult = () => {
+const handleDownloadPDF = () => {
+  const doc = new jsPDF("landscape", "mm", "a4");
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  const userCode = localStorage.getItem("userCode") || "// No source code log found.";
+  const userLanguage = (localStorage.getItem("userLanguage") || "Logic").toUpperCase();
+  const userName = (user?.name || user?.username || "Authorized User").toUpperCase();
+
+  // --- 1. SLATE & ANTHRACITE BASE ---
+  doc.setFillColor(15, 17, 23); // Deep professional slate
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
+
+  // Subtle Left-side Accent Stripe (Brand Identity)
+  doc.setFillColor(255, 215, 0); 
+  doc.rect(0, 0, 4, pageHeight, "F");
+
+  // --- 2. ARCHITECTURAL GRID ACCENTS ---
+  doc.setDrawColor(40, 45, 60);
+  doc.setLineWidth(0.1);
+  // Vertical grid lines
+  for (let i = 20; i < pageWidth; i += 40) {
+    doc.line(i, 0, i, pageHeight);
+  }
+
+  // --- 3. PREMIUM MINIMALIST BORDER ---
+  doc.setDrawColor(70, 75, 90);
+  doc.setLineWidth(0.3);
+  doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+
+  // --- 4. HEADER: BRANDING & SERIES ---
+  doc.setTextColor(255, 215, 0);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("MELO", 18, 22);
+  
+  doc.setTextColor(100, 105, 120);
+  doc.setFont("helvetica", "normal");
+  doc.text("|  TECHNICAL ACHIEVEMENT SERIES", 32, 22);
+
+  doc.setFontSize(8);
+  doc.text("EST. 2025 / ARENA PROTOCOL v2.0", pageWidth - 18, 22, { align: "right" });
+
+  // --- 5. MAIN TITLES (High Contrast) ---
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(48);
+  doc.setFont("helvetica", "bold");
+  doc.text("CERTIFICATE", 20, 55);
+  doc.setTextColor(255, 215, 0);
+  doc.text("OF MERIT", 20, 72);
+
+  // --- 6. RECIPIENT DATA ---
+  doc.setDrawColor(255, 215, 0);
+  doc.setLineWidth(1);
+  doc.line(20, 80, 60, 80);
+
+  doc.setTextColor(160, 165, 180);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text("PROUDLY PRESENTED TO", 20, 95);
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(38);
+  doc.setFont("times", "bolditalic"); // Elegant contrast
+  doc.text(userName, 20, 115);
+
+  // --- 7. ACHIEVEMENT SUMMARY (Refined Typography) ---
+  doc.setTextColor(140, 145, 160);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  const body = `This document validates the successful completion of the ${userLanguage} Engineering Challenge. The candidate demonstrated exceptional proficiency in real-time logic execution, achieving a verified score of ${score} XP within the Melo Arena environment.`;
+  doc.text(body, 20, 130, { maxWidth: 160, lineHeightFactor: 1.6 });
+
+  // --- 8. THE "DATA BLOCK" (Professional Stats) ---
+  const startX = 200;
+  const startY = 95;
+
+  const drawDataRow = (y, label, value) => {
+    doc.setTextColor(100, 105, 120);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text(label, startX, y);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.text(value, startX, y + 7);
+    doc.setDrawColor(40, 45, 60);
+    doc.line(startX, y + 10, startX + 70, y + 10);
+  };
+
+  drawDataRow(startY, "ACCURACY METRIC", `${accuracy}% PRECISION`);
+  drawDataRow(startY + 20, "TEMPORAL LATENCY", timeTaken.toUpperCase());
+  drawDataRow(startY + 40, "VALIDATION ID", certificateId.split('-')[0].toUpperCase());
+
+  // --- 9. SIGNATURE & STAMP AREA ---
+  doc.setDrawColor(255, 215, 0);
+  doc.setLineWidth(0.5);
+  doc.line(startX, 170, startX + 70, 170);
+  doc.setTextColor(255, 215, 0);
+  doc.setFontSize(8);
+  doc.text("OFFICIAL AUTHENTICATION", startX, 175);
+  
+  // Digital watermark/Seal
+  doc.setGState(new doc.GState({ opacity: 0.1 }));
+  doc.setFontSize(60);
+  doc.text("MELO", pageWidth - 50, pageHeight - 30, { angle: 30 });
+  doc.setGState(new doc.GState({ opacity: 1.0 }));
+
+  // Footer Metadata
+  doc.setTextColor(70, 75, 90);
+  doc.setFont("courier", "normal");
+  doc.setFontSize(7);
+  doc.text(`SYSTEM_AUTH_DATE: ${new Date().toUTCString()}`, 20, 190);
+
+  // --- PAGE 2: ARCHIVAL LOG ---
+  doc.addPage();
+  doc.setFillColor(10, 12, 16);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
+  
+  doc.setTextColor(255, 215, 0);
+  doc.setFont("courier", "bold");
+  doc.setFontSize(12);
+  doc.text("> ARCHIVAL_ENCODING_LOG", 15, 20);
+  
+  doc.setTextColor(100, 105, 120);
+  doc.setFontSize(7);
+  doc.setFont("courier", "normal");
+  const splitCode = doc.splitTextToSize(userCode, pageWidth - 30);
+  doc.text(splitCode, 15, 35);
+
+  doc.save(`Melo_Professional_${userName.replace(/\s+/g, '_')}.pdf`);
+};
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -21,16 +153,18 @@ const QuizResult = () => {
 const recoveredState = savedResult ? JSON.parse(savedResult) : null;
   
   // 🔥 EXTENDED SYNC: Destructure all stats sent from BattleScreen
-  const { 
-    score = 0, 
-    totalQuestions = 10, 
-    correctAnswers = 0,
-    timeTaken = "0s", 
-    accuracy = 0, 
-    rank = 1,
-    contestId = null,
-    timestamp = new Date().toISOString()
-  } = location.state || {};
+ const { 
+  score = 0, 
+  totalQuestions = 10, 
+  correctAnswers = 0,
+  timeTaken = "0s", 
+  accuracy = 0, 
+  rank = 1,
+  contestId = null,
+  timestamp = new Date().toISOString(),
+  warnings = 0   // ✅ ADD THIS
+} = location.state || {};
+const certificateId = `MELO-${Date.now()}-${Math.floor(Math.random()*1000)}`;
 
   const [topWarriors, setTopWarriors] = useState([]);
   const [loadingLB, setLoadingLB] = useState(true);
@@ -64,82 +198,6 @@ useEffect(() => {
     }
   }, [rank]);
 
-  // 🔥 NEW: AUTO SUBMIT BATTLE RESULT (ADDED ONLY)
-  useEffect(() => {
-    if (!contestId) return;
-
-  
-
-    const submitAndStartPolling = async () => {
-      try {
-        setIsSubmitting(true);
-
-        const numericTime =
-          parseInt(timeTaken.replace("s", ""), 10) || 0;
-
-        // 🔥 Prevent duplicate submit
-        const alreadySubmitted =
-          sessionStorage.getItem(`submitted_${contestId}`);
-
-        if (!alreadySubmitted) {
-          await axiosInstance.post("/contest/submit", {
-            contestId,
-            score,
-            accuracy,
-            timeTaken: numericTime
-          });
-
-          sessionStorage.setItem(
-            `submitted_${contestId}`,
-            "true"
-          );
-        }
-
-
-      } catch (err) {
-        console.log("Submit failed:", err.response?.data);
-        setLoadingLB(false);
-      } finally {
-        setIsSubmitting(false);
-      }
-    };
-
-   submitAndStartPolling();
-
-   // 🔥 Fetch initial leaderboard (important)
-axiosInstance
-  .get(`/contest/${contestId}/leaderboard`)
-  .then((res) => {
-    const lb = res?.data?.data || [];
-    setTopWarriors(lb.slice(0, 3));
-    setLoadingLB(false);
-  })
-  .catch(() => {
-    setLoadingLB(false);
-  });
-
-// 🔥 Join contest room for realtime leaderboard
-socket.emit("join_contest", contestId);
-
-// prevent duplicate listeners
-socket.off("LEADERBOARD_UPDATE").on("LEADERBOARD_UPDATE", (data) => {
-
-  const lbData =
-    data?.data ||
-    data ||
-    [];
-
-  setTopWarriors(lbData.slice(0,3));
-  setLoadingLB(false);
-
-});
-    // initial leaderboard fetch
-
-    return () => {
-  socket.off("LEADERBOARD_UPDATE");
-};
-
-  }, [contestId]);
 
   /**
    * 🔗 SOCIAL BOAST PROTOCOL
@@ -252,6 +310,12 @@ if (!location.state && !recoveredState) {
 
           {/* 🎮 PRIMARY ACTIONS */}
           <div className="space-y-2 md:space-y-3">
+          <button
+  onClick={handleDownloadPDF}
+  className="w-full py-3 bg-black border border-white/10 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all"
+>
+  Download Report PDF
+</button>
              <button 
                onClick={() => navigate('/dashboard')}
                className="w-full py-3.5 md:py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl md:rounded-[1.8rem] font-black text-[9px] md:text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all border-b-[3px] md:border-b-4 border-indigo-900"
@@ -287,6 +351,7 @@ if (!location.state && !recoveredState) {
     </div>
   );
 };
+
 
 /* --- MINI BOX COMPONENTS --- */
 

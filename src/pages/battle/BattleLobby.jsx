@@ -57,9 +57,38 @@ const BattleLobby = () => {
       if (isTriggered) return;
 
       const now = new Date().getTime();
-      const start = new Date(contestRef.current?.startTime || contest.startTime).getTime();
+      const startTimeValue = contestRef.current?.startTime || contest.startTime;
+
+if (!startTimeValue) {
+  setStatus("INVALID START TIME");
+  return;
+}
+let start;
+
+if (
+  typeof startTimeValue === "string" &&
+  !startTimeValue.endsWith("Z") &&
+  !startTimeValue.includes("+")
+) {
+  start = new Date(startTimeValue + "Z").getTime();
+} else {
+  start = new Date(startTimeValue).getTime();
+}
+
+if (isNaN(start)) {
+  console.error("Invalid startTime:", startTimeValue);
+  setStatus("INVALID START TIME");
+  return;
+}
       const diff = start - now;
 
+      if (diff < -5000) {
+  setStatus("BATTLE TERMINATED");
+  setTimeout(() => {
+    navigate(`/contest-leaderboard/${id}`, { replace: true });
+  }, 1500);
+  return;
+}
       if (diff <= 0) {
         isTriggered = true; 
         clearInterval(timer);
@@ -90,11 +119,24 @@ const BattleLobby = () => {
             throw new Error(resData?.message || "Unauthorized Entry");
           }
         } catch (error) {
-          console.error("Battle Initiation Error:", error);
-          setStatus("SYNC FAILURE - RETIRING...");
-          toast.error(error.message || "Arena Sync Failed. Retiring...");
-          setTimeout(() => navigate('/dashboard'), 2000);
-        }
+  console.error("Battle Initiation Error:", error);
+
+  const msg = error?.response?.data?.message || error.message;
+
+  if (msg.includes("ended")) {
+    setStatus("BATTLE TERMINATED");
+    toast.error("Battle already ended");
+
+    setTimeout(() => {
+      navigate(`/contest-leaderboard/${id}`, { replace: true });
+    }, 1500);
+  } else {
+    setStatus("SYNC FAILURE");
+    toast.error(msg || "Arena Sync Failed");
+
+    setTimeout(() => navigate('/dashboard'), 2000);
+  }
+}
       } else {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -120,7 +162,21 @@ const BattleLobby = () => {
 
   const schedule = useMemo(() => {
     if (!contest?.startTime) return { date: "---", time: "---" };
-    const dt = new Date(contest.startTime);
+  let dt;
+
+if (
+  typeof contest.startTime === "string" &&
+  !contest.startTime.endsWith("Z") &&
+  !contest.startTime.includes("+")
+) {
+  dt = new Date(contest.startTime + "Z");
+} else {
+  dt = new Date(contest.startTime);
+}
+
+if (isNaN(dt.getTime())) {
+  return { date: "INVALID", time: "INVALID" };
+}
     return {
       date: dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
       time: dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })

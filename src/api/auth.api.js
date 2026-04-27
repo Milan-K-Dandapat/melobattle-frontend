@@ -4,22 +4,17 @@ import API from "./axios"; // This should point to your axiosInstance.js
  * Exchange Firebase ID Token for Backend JWT
  * @param {string} idToken - The token received from Firebase signInWithPopup
  */
-export const googleLogin = async (idToken) => {
-  try {
-    // 🔥 FIXED: Matches the pluralized backend route
-    const response = await API.post("/users/create", { idToken });
-    
-    // axiosInstance interceptor already returns 'response.data'
-    if (response.success && response.token) {
-      localStorage.setItem("token", response.token);
-      localStorage.setItem("user", JSON.stringify(response.data || response.user));
-    }
-    
-    return response;
-  } catch (error) {
-    console.error("Auth API Error:", error.response?.data || error.message);
-    throw error;
+export const googleLogin = async (idToken, promoCode) => {
+  const response = await API.post("/auth/google", { idToken, promoCode });
+
+  console.log("🔥 RESPONSE:", response);
+
+  if (response.success && response.data?.token) {
+    localStorage.setItem("token", response.data.token);
+    localStorage.setItem("user", JSON.stringify(response.data.user));
   }
+
+  return response;
 };
 
 /**
