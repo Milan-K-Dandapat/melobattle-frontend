@@ -62,21 +62,43 @@ useEffect(() => {
   if (mode === "exam" && warningsCount >= 5) {
     toast.error("Disqualified due to malpractice 🚫");
 
-    setTimeout(() => {
-      navigate("/quiz-result", {
-        state: {
-          score: 0,
-          totalQuestions: 1,
-          correctAnswers: 0,
-          accuracy: 0,
+    const disqualifyUser = async () => {
+      try {
+        // 🔥 STEP 1: UPDATE BACKEND
+        await axiosInstance.post("/contest/disqualify", {
           contestId: id,
-          timeTaken: "0s",
-          timestamp: new Date().toISOString(),
-          disqualified: true   // 🔥 optional flag
-        },
-        replace: true
-      });
-    }, 1500);
+          examUserId: examUserId || undefined
+        });
+
+        // 🔥 STEP 2: REAL-TIME DASHBOARD SYNC
+        socketRef.current?.emit("PLAYER_FINISHED", {
+          contestId: id,
+          userId: user?._id
+        });
+
+      } catch (err) {
+        console.error("Disqualify API failed:", err);
+      }
+
+      // 🔥 STEP 3: NAVIGATE
+      setTimeout(() => {
+        navigate("/quiz-result", {
+          state: {
+            score: 0,
+            totalQuestions: 1,
+            correctAnswers: 0,
+            accuracy: 0,
+            contestId: id,
+            timeTaken: "0s",
+            timestamp: new Date().toISOString(),
+            disqualified: true
+          },
+          replace: true
+        });
+      }, 1200);
+    };
+
+    disqualifyUser();
   }
 }, [warningsCount]);
 const [lastScreenshot, setLastScreenshot] = useState(null);
