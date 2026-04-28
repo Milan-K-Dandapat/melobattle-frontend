@@ -129,7 +129,7 @@ const sendToBackend = async (type, message, screenshot = null) => {
 };
 
 const triggerWarning = (message, type = "GENERAL") => {
-  if (!cameraStarted) return;
+  if (!videoRef.current?.srcObject) return;
   const now = Date.now();
 
 if (now - lastViolationTime.current < 2000) return;
@@ -241,21 +241,20 @@ useEffect(() => {
   };
 }, []);
 
-  // 🚫 Tab Switch Detection
-  useEffect(() => {
-    const handleVisibility = () => {
-     if (!cameraStarted) return;
+useEffect(() => {
+  const handleVisibility = () => {
+    if (!videoRef.current?.srcObject) return; // ✅ FIX
 
-if (document.hidden) {
-  triggerWarning("Tab switch detected ⚠️", "TAB");
-}
-    };
+    if (document.hidden) {
+      triggerWarning("Tab switch detected ⚠️", "TAB");
+    }
+  };
 
-    document.addEventListener("visibilitychange", handleVisibility);
+  document.addEventListener("visibilitychange", handleVisibility);
 
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibility);
-  }, []);
+  return () =>
+    document.removeEventListener("visibilitychange", handleVisibility);
+}, []);
 
   // 🔒 Fullscreen Enforcement
 useEffect(() => {
