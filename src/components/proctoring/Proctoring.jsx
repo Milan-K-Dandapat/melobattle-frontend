@@ -56,15 +56,20 @@ const startCamera = async () => {
 
     videoRef.current.srcObject = stream;
 
-    videoRef.current.onloadedmetadata = () => {
-      videoRef.current.play();
-      startFaceDetection();
-      setCameraStarted(true);
-      setPermissionDenied(false);
-      setIsCheckingPermission(false);
+   videoRef.current.srcObject = stream;
 
-      onReady?.(); // ✅ VERY IMPORTANT
-    };
+setTimeout(() => {
+  if (videoRef.current) {
+    videoRef.current.play();
+    startFaceDetection();
+    setCameraStarted(true);
+    setPermissionDenied(false);
+    setIsCheckingPermission(false);
+
+    onReady?.(); // ✅ NOW WILL FIRE ALWAYS
+    console.log("✅ Proctoring Ready Triggered");
+  }
+}, 500);
 
   } catch (err) {
     console.error("Camera error:", err);
