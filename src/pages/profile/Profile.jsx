@@ -141,9 +141,19 @@ const Profile = () => {
       {/* 🆔 USER INFO */}
       <div className="text-center px-8 -mt-6 relative z-30">
         <div className="flex flex-col items-center">
-            <h2 className={`text-4xl font-black uppercase italic leading-none flex items-center justify-center gap-2 ${settings.darkTheme ? 'text-white' : 'text-slate-900'}`}>
-                {user?.name} {settings.stealth && <Eye size={18} className="text-cyan-500 animate-pulse" />}
-            </h2>
+            <h2 className={`text-4xl font-black uppercase italic leading-none flex items-center justify-center gap-3 ${settings.darkTheme ? 'text-white' : 'text-slate-900'}`}>
+    {user?.name}
+
+    {/* ✏️ EDIT ICON */}
+    <button 
+        onClick={() => setIsEditing(true)} 
+        className="p-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 transition"
+    >
+        <User size={16} className="text-purple-400" />
+    </button>
+
+    {settings.stealth && <Eye size={18} className="text-cyan-500 animate-pulse" />}
+</h2>
             {user?.role === "ADMIN" && (
                 <div className="mt-2 flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">
                     <ShieldCheck size={12} className="text-purple-500" />
