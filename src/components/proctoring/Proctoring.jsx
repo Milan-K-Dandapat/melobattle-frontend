@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as faceapi from "face-api.js";
-
-const Proctoring = ({ setWarningsCount, setLastScreenshot, lastScreenshot, examEnded }) => {
+const Proctoring = ({ setWarningsCount, setLastScreenshot, lastScreenshot, examEnded, onReady }) => {
   const videoRef = useRef(null);
   const detectionInterval = useRef(null);
   const canvasRef = useRef(null);
@@ -14,6 +13,8 @@ const [faceWarnings, setFaceWarnings] = useState(0);
   const lastViolationTime = useRef(0);
   const noFaceStartTime = useRef(null);
   const [cameraStarted, setCameraStarted] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+const [isCheckingPermission, setIsCheckingPermission] = useState(true);
   const [isRecording, setIsRecording] = useState(true);
 
   // 📦 Load Models
@@ -46,22 +47,30 @@ console.log("TinyFaceDetector loaded:", faceapi.nets.tinyFaceDetector.params);
   // 🎥 Start Camera
 const startCamera = async () => {
   try {
+    setIsCheckingPermission(true);
+
     const stream = await navigator.mediaDevices.getUserMedia({
       video: true,
-      audio: false
+      audio: true
     });
 
     videoRef.current.srcObject = stream;
 
     videoRef.current.onloadedmetadata = () => {
-      videoRef.current.play(); // 🔥 IMPORTANT
+      videoRef.current.play();
       startFaceDetection();
-      setCameraStarted(true); // ✅ mark started
+      setCameraStarted(true);
+      setPermissionDenied(false);
+      setIsCheckingPermission(false);
+
+      onReady?.(); // ✅ VERY IMPORTANT
     };
 
   } catch (err) {
     console.error("Camera error:", err);
-    setWarning("Camera access denied ❌");
+    setPermissionDenied(true);
+    setIsCheckingPermission(false);
+    setWarning("Camera & Mic permission required ❌");
   }
 };
 
@@ -111,6 +120,7 @@ const sendToBackend = async (type, message, screenshot = null) => {
 };
 
 const triggerWarning = (message, type = "GENERAL") => {
+  if (!cameraStarted) return;
   const now = Date.now();
 
 if (now - lastViolationTime.current < 2000) return;
@@ -199,6 +209,18 @@ const startFaceDetection = () => {
   }, 1000); // Increased to 1 second intervals for less "strict" feel
 };
 useEffect(() => {
+  const handleRetry = () => {
+    startCamera();
+  };
+
+  document.addEventListener("retryCamera", handleRetry);
+
+  return () => {
+    document.removeEventListener("retryCamera", handleRetry);
+  };
+}, []);
+
+useEffect(() => {
   return () => {
     if (detectionInterval.current) {
       clearInterval(detectionInterval.current);
@@ -213,7 +235,9 @@ useEffect(() => {
   // 🚫 Tab Switch Detection
   useEffect(() => {
     const handleVisibility = () => {
-     if (document.hidden) {
+     if (!cameraStarted) return;
+
+if (document.hidden) {
   triggerWarning("Tab switch detected ⚠️", "TAB");
 }
     };
@@ -369,20 +393,35 @@ useEffect(() => {
   <div className="text-white text-xs">
       <h2>AI Proctoring 🎥</h2>
 {!cameraStarted && (
-  <button
-    onClick={startCamera}
-    style={{
-      padding: "10px 20px",
-      background: "#6366f1",
-      color: "white",
-      border: "none",
-      borderRadius: "8px",
-      cursor: "pointer",
-      marginBottom: "10px"
-    }}
-  >
-    🎥 Start Camera
-  </button>
+  <div style={{ textAlign: "center", marginTop: "20px" }}>
+    
+    {isCheckingPermission ? (
+      <p>🔄 Checking camera & microphone access...</p>
+    ) : (
+      <>
+        <p style={{ color: "red", marginBottom: "10px" }}>
+          Camera & Microphone access is required to start exam
+        </p>
+
+        {permissionDenied && (
+          <button
+            onClick={startCamera}
+            style={{
+              padding: "10px 20px",
+              background: "#6366f1",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer"
+            }}
+          >
+            🎥 Turn On Camera & Mic
+          </button>
+        )}
+      </>
+    )}
+
+  </div>
 )}
 
 <div style={{ textAlign: "center", marginTop: "30px" }}>

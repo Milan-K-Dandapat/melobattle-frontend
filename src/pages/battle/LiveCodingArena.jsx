@@ -58,6 +58,7 @@ const mode = contest?.mode ?? "battle";
 const [opponent, setOpponent] = useState(null);
 // 🔐 EXAM MODE STATES
 const [warningsCount, setWarningsCount] = useState(0);
+const [isProctoringReady, setIsProctoringReady] = useState(false);
 useEffect(() => {
   if (mode === "exam" && warningsCount >= 5) {
     toast.error("Disqualified due to malpractice 🚫");
@@ -185,47 +186,51 @@ if (data.mode === "exam") {
     fetchArenaData();
   }, [id, navigate]);
 
-  useEffect(() => {
+useEffect(() => {
   if (!contest?.startTime || !contest?.duration) return;
 
-// 🔥 ADD THIS LINE
-  if (mode === "exam" && showExamLogin) return;
+  if (mode === "exam" && (showExamLogin || !isProctoringReady)) return; // ✅ FIXED
 
-    const timer = setInterval(() => {
-      if (isTimerTriggered.current) return;
+  const timer = setInterval(() => {
+    if (isTimerTriggered.current) return;
 
-     const now = Date.now();
-const start = startTimeRef.current; // ✅ FIXED
-const end = start + (contest.duration * 60 * 1000);
-const remaining = end - now;
+    const now = Date.now();
+    const start = startTimeRef.current;
+    const end = start + (contest.duration * 60 * 1000);
+    const remaining = end - now;
 
-     if (remaining <= 0 && !(mode === "exam" && showExamLogin)) {
-        isTimerTriggered.current = true;
-        setTimeLeft("00:00:00");
-        setIsTimeUp(true);
-        clearInterval(timer);
-        toast.error("Time is up! Auto-submitting to Matrix...", { duration: 4000 });
-        
-        // Wait a tiny bit for UI to update before heavy network call
-        setTimeout(() => {
-  if (mode === "exam") {
-    navigate(`/contest-leaderboard/${id}`, {
-  replace: true
-});
-  } else {
-    handleSubmit(true);
-  }
-}, 500);
-      } else {
-        const h = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const m = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-        const s = Math.floor((remaining % (1000 * 60)) / 1000);
-        setTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-      }
-    }, 1000);
+    if (remaining <= 0 && !(mode === "exam" && showExamLogin)) {
+      isTimerTriggered.current = true;
+      setTimeLeft("00:00:00");
+      setIsTimeUp(true);
+      clearInterval(timer);
 
-    return () => clearInterval(timer);
-  }, [contest, mode, showExamLogin]);
+      toast.error("Time is up! Auto-submitting to Matrix...", { duration: 4000 });
+
+      setTimeout(() => {
+        if (mode === "exam") {
+          navigate(`/contest-leaderboard/${id}`, {
+            replace: true
+          });
+        } else {
+          handleSubmit(true);
+        }
+      }, 500);
+
+    } else {
+      const h = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const m = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((remaining % (1000 * 60)) / 1000);
+
+      setTimeLeft(
+        `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+      );
+    }
+  }, 1000);
+
+  return () => clearInterval(timer);
+
+}, [contest, mode, showExamLogin, isProctoringReady]); // ✅ ADD DEPENDENCY
 
 useEffect(() => {
   if (!contest) return; // ✅ wait for contest
@@ -527,7 +532,6 @@ if (!isAutoSubmit) {
   }
 };
 
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050810] flex flex-col items-center justify-center text-purple-500 font-black tracking-widest uppercase">
@@ -539,6 +543,31 @@ if (!isAutoSubmit) {
 
   return (
     <div className="min-h-screen bg-[#050810] text-white flex flex-col font-sans overflow-hidden h-screen">
+{mode === "exam" && !isProctoringReady && (
+  <div className="fixed inset-0 bg-black/90 z-[9999] flex flex-col items-center justify-center text-white">
+
+    <h2 className="mb-4 text-lg font-bold">
+      🔒 Secure Exam Initialization
+    </h2>
+
+    <p className="mb-6">
+      Please enable camera & microphone to continue
+    </p>
+
+    {/* 👇 MANUAL BUTTON */}
+    <button
+      onClick={() => {
+        // 🔥 trigger camera again
+        document.dispatchEvent(new Event("retryCamera"));
+      }}
+      className="px-6 py-3 bg-indigo-600 rounded-lg font-bold"
+    >
+      🎥 Turn On Camera & Mic
+    </button>
+
+  </div>
+)}
+
      {showConfirm && (
   <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[999]">
     <div className="bg-[#0A0F1E] border border-white/10 rounded-xl p-6 w-[320px] text-center">
@@ -793,12 +822,15 @@ if (!isAutoSubmit) {
     {/* Editor */}
     <div className="flex-1">
       <Editor
-        height="100%"
-        theme="vs-dark"
-        language={MONACO_LANGUAGES[language]}
-        value={codeMap[language] || ""}
-        onChange={handleEditorChange}
-      />
+  height="100%"
+  theme="vs-dark"
+  language={MONACO_LANGUAGES[language]}
+  value={codeMap[language] || ""}
+  onChange={handleEditorChange}
+  options={{
+    readOnly: mode === "exam" && !isProctoringReady
+  }}
+/>
     </div>
   </div>
 
@@ -848,10 +880,11 @@ if (!isAutoSubmit) {
 {mode === "exam" && (
   <div className="w-[260px] bg-[#050810] border-l border-white/10 p-4">
 
-   <Proctoring 
+  <Proctoring 
   setWarningsCount={setWarningsCount}
   setLastScreenshot={setLastScreenshot}
-  examEnded={isTimeUp}   // 🔥 ADD THIS
+  examEnded={isTimeUp}
+  onReady={() => setIsProctoringReady(true)}
 />
 
     <div className="mt-4 text-xs text-red-400 font-bold">
