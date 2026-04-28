@@ -5,7 +5,7 @@ import {
   Zap, Star, ChevronRight, Settings, 
   LogOut, Wallet, Medal, Bell, ShieldCheck, MapPin,
   ArrowLeft, Volume2, Moon, Eye, Share2, Info, BellRing, Copy, Sun,
-  Crown, Flame, Gem, Lock, Terminal, ShieldAlert
+  Crown, Flame, Gem, Lock, Terminal, ShieldAlert, Edit3
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useMusic } from "../../context/MusicContext"; 
@@ -141,15 +141,15 @@ const Profile = () => {
       {/* 🆔 USER INFO */}
       <div className="text-center px-8 -mt-6 relative z-30">
         <div className="flex flex-col items-center">
-            <h2 className={`text-4xl font-black uppercase italic leading-none flex items-center justify-center gap-3 ${settings.darkTheme ? 'text-white' : 'text-slate-900'}`}>
+<h2 className={`text-4xl font-black uppercase italic leading-none flex items-center justify-center gap-3 ${settings.darkTheme ? 'text-white' : 'text-slate-900'}`}>
     {user?.name}
 
-    {/* ✏️ EDIT ICON */}
+    {/* ✏️ PENCIL EDIT ICON */}
     <button 
         onClick={() => setIsEditing(true)} 
         className="p-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 transition"
     >
-        <User size={16} className="text-purple-400" />
+        <Edit3 size={16} className="text-purple-400" />
     </button>
 
     {settings.stealth && <Eye size={18} className="text-cyan-500 animate-pulse" />}
