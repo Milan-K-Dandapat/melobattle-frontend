@@ -51,7 +51,7 @@ useEffect(() => {
     const idToken = await result.user.getIdToken();
 
     const response = await googleLogin(idToken, promoCode);
-if (response.success && response.data?.token) {
+if (response.success && response.token) {
   login(response.data.user, response.data.token);
   navigate("/intro");
 } else {
