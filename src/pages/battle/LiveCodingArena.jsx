@@ -556,14 +556,27 @@ if (!isAutoSubmit) {
 
     {/* 👇 MANUAL BUTTON */}
     <button
-      onClick={() => {
-        // 🔥 trigger camera again
-        document.dispatchEvent(new Event("retryCamera"));
-      }}
-      className="px-6 py-3 bg-indigo-600 rounded-lg font-bold"
-    >
-      🎥 Turn On Camera & Mic
-    </button>
+  onClick={async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      console.log("✅ Camera & Mic Enabled", stream);
+
+      // ✅ THIS LINE IS VERY IMPORTANT
+      setIsProctoringReady(true);
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Camera/Mic permission denied ❌");
+    }
+  }}
+  className="px-6 py-3 bg-indigo-600 rounded-lg font-bold"
+>
+  🎥 Turn On Camera & Mic
+</button>
 
   </div>
 )}
