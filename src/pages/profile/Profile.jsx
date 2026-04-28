@@ -141,7 +141,7 @@ const Profile = () => {
       {/* 🆔 USER INFO */}
       <div className="text-center px-8 -mt-6 relative z-30">
         <div className="flex flex-col items-center">
-<h2 className={`text-4xl font-black uppercase italic leading-none flex items-center justify-center gap-3 ${settings.darkTheme ? 'text-white' : 'text-slate-900'}`}>
+<h2 className={`text-2xl font-black uppercase italic leading-none flex items-center justify-center gap-2 ${settings.darkTheme ? 'text-white' : 'text-slate-900'}`}>
     {user?.name}
 
     {/* ✏️ PENCIL EDIT ICON */}
