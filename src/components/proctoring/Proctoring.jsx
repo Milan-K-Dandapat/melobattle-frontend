@@ -49,14 +49,24 @@ const startCamera = async () => {
   try {
     setIsCheckingPermission(true);
 
+    // 🔥 STEP 1: CHECK DEVICES FIRST
+    const devices = await navigator.mediaDevices.enumerateDevices();
+
+    const hasCamera = devices.some(d => d.kind === "videoinput");
+    const hasMic = devices.some(d => d.kind === "audioinput");
+
+    if (!hasCamera && !hasMic) {
+      throw new Error("No camera and microphone found");
+    }
+
+    // 🔥 STEP 2: SAFE CONSTRAINTS (NO HARD FAIL)
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true
+      video: hasCamera,
+      audio: hasMic
     });
 
     videoRef.current.srcObject = stream;
 
-    // ✅ ADD THIS BLOCK (VERY IMPORTANT)
     setTimeout(() => {
       if (videoRef.current) {
         videoRef.current.play();
@@ -77,9 +87,18 @@ const startCamera = async () => {
 
   } catch (err) {
     console.error("Camera error:", err);
+
+    // 🔥 IMPORTANT: HANDLE NOT FOUND ERROR
+    if (err.name === "NotFoundError") {
+      setWarning("No camera/microphone found ❌");
+    } else if (err.name === "NotAllowedError") {
+      setWarning("Permission denied ❌");
+    } else {
+      setWarning("Camera error ❌");
+    }
+
     setPermissionDenied(true);
     setIsCheckingPermission(false);
-    setWarning("Camera & Mic permission required ❌");
   }
 };
 
