@@ -544,7 +544,7 @@ if (!isAutoSubmit) {
   return (
     <div className="min-h-screen bg-[#050810] text-white flex flex-col font-sans overflow-hidden h-screen">
 {mode === "exam" && !isProctoringReady && (
-  <div className="fixed inset-0 bg-black/90 z-[9999] flex flex-col items-center justify-center text-white">
+  <div className="fixed inset-0 bg-[#050810] z-[9999] flex flex-col items-center justify-center text-white">
 
     <h2 className="mb-4 text-lg font-bold">
       🔒 Secure Exam Initialization
